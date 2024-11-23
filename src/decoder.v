@@ -194,6 +194,9 @@ module Decoder(
                 // invalid instruction
               end
             endcase
+            if (inst === 32'h0ff00513) begin // exit
+              op_type <= 38;
+            end
           end
           CodeArithR: begin // ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
             pc_next <= pc + 4;
@@ -237,7 +240,7 @@ module Decoder(
           end
           default: begin
             pc_next <= pc + 4;
-            op_type <= 40;
+            op_type <= 39;
             // invalid instruction
           end
         endcase

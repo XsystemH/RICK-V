@@ -3,9 +3,9 @@
   beq, bne, blt, bge, bltu, bgeu, 4 - 9
   lb, lh, lw, lbu, lhu, 10 - 14
   sb, sh, sw, 15 - 17
-  addi, slti, sltiu, xori, ori, andi, slli, srli, srai, 18 - 27
-  add, sub, sll, slt, sltu, xor_, srl, sra, or_, and_, 28 - 38
-  exit, empty 39 - 40
+  addi, slti, sltiu, xori, ori, andi, slli, srli, srai, 18 - 26
+  add, sub, sll, slt, sltu, xor_, srl, sra, or_, and_, 27 - 37
+  exit, empty 38 - 39
 
   64 = 2^6 6 Bits for OP_Type
 */
@@ -15,3 +15,9 @@
 
 `define ROB_WIDTH_BIT 5
 `define ROB_WIDTH (1<<`ROB_WIDTH_BIT)
+
+`define RS_WIDTH_BIT 4
+`define RS_WIDTH (1<<`RS_WIDTH_BIT) // 16
+
+`define LS_WIDTH_BIT 4
+`define LS_WIDTH (1<<`LS_WIDTH_BIT) // 16
