@@ -10,5 +10,8 @@
   64 = 2^6 6 Bits for OP_Type
 */
 
+`define REG_ID_BIT 5
+`define REG_ID_WIDTH (1<<`REG_ID_BIT) // 32
+
 `define ROB_WIDTH_BIT 5
 `define ROB_WIDTH (1<<`ROB_WIDTH_BIT)
