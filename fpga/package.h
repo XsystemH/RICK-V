@@ -49,7 +49,7 @@ struct PackageUploadInput {
 	byte data[1024] = {};
 
 	PackageUploadInput(byte const *data, size_t size) : size(size) {
-		assert(size <= sizeof(data), "input data size exceeds buffer size");
+		assert(size <= sizeof(this->data), "input data size exceeds buffer size");
 		memcpy(this->data, data, size);
 	}
 
