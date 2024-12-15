@@ -19,5 +19,5 @@
 `define RS_WIDTH_BIT 4
 `define RS_WIDTH (1<<`RS_WIDTH_BIT) // 16
 
-`define LS_WIDTH_BIT 4
-`define LS_WIDTH (1<<`LS_WIDTH_BIT) // 16
+`define LSB_WIDTH_BIT 4
+`define LSB_WIDTH (1<<`LSB_WIDTH_BIT) // 16

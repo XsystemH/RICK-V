@@ -16,8 +16,15 @@ module ROB(
   input wire [31:0] inst_pc,
   // to Decoder
   output wire rob_full,
-  output wire [`ROB_WIDTH_BIT-1:0] rob_free_id // no need to use
+  output wire [`ROB_WIDTH_BIT-1:0] rob_free_id,
   
+  // with decoder & regfile
+  input wire [`REG_ID_BIT-1:0] reoder_1,
+  input wire [`REG_ID_BIT-1:0] reoder_2,
+  output wire rob_rs1_is_ready,
+  output wire rob_rs2_is_ready,
+  output wire [31:0] rob_rs1_value,
+  output wire [31:0] rob_rs2_value
 );
 // buffer
   reg busy [`ROB_WIDTH-1:0];
@@ -33,6 +40,11 @@ module ROB(
 
   assign rob_full = (head == tail) && busy[tail];
   assign rob_free_id = tail;
+
+  assign rob_rs1_is_ready = busy[reoder_1] ? 0 : 1;
+  assign rob_rs2_is_ready = busy[reoder_2] ? 0 : 1;
+  assign rob_rs1_value = busy[reoder_1] ? 0 : value[reoder_1];
+  assign rob_rs2_value = busy[reoder_2] ? 0 : value[reoder_2];
 
   always @(posedge clk_in) begin
     if (rst_in) begin
