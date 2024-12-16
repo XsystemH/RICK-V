@@ -20,16 +20,18 @@ module lsb(
   input wire [`REG_ID_BIT-1:0] dest_in,
 
   // form memctrl
-  input wire available,
+  input wire received,
   input wire has_result,
   input wire [31:0] value_load,
   // to memctrl
+  output reg go_work,
   output reg l_or_s, // 0 load 1 store
   output reg [2:0] width,
   output reg [31:0] address,
   output reg [31:0] value_store,
 
   // to CDB
+  output reg lsb_to_rob,
   output reg [`ROB_WIDTH_BIT-1:0] rob_id,
   output reg [31:0] value
 );
@@ -77,8 +79,8 @@ module lsb(
         dest[tail] <= dest_in;
         tail <= (tail + 1 == `LSB_WIDTH) ? 0 : tail + 1;
       end
-      if (available && !empty && j[head] && k[head]) begin // execute
-        last_op <= op[head];
+
+      if (!empty && j[head] && k[head]) begin // boardcast all the time
         if (10 <= op[head] && op[head] <= 15) begin
           // load
           l_or_s <= 0;
@@ -100,15 +102,24 @@ module lsb(
                        (op[head] == 21) ? (vk[head] & 32'h0000ffff) :
                        (op[head] == 22) ? vk[head] : 0;
         end
+      end
+      if (received) begin // head + 1 when memctrl received
+        last_op <= op[head];
+        last_dest <= dest[head];
+        busy[head] <= 0;
         head <= (head + 1 == `LSB_WIDTH) ? 0 : head + 1;
       end
       if (has_result) begin
         // write back
+        lsb_to_rob <= 1;
         value <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
                  last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
                  value_load;
         rob_id <= last_dest;
+      end else begin
+        lsb_to_rob <= 0;
       end
+      
     end
   end
 
