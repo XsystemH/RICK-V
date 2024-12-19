@@ -5,6 +5,8 @@ module RS(
   input wire rst_in, // reset when high
   input wire rdy_in, // pause when low
 
+  output wire rs_full,
+
   // from Decoder
   input wire to_rs,
   input wire [5:0] op_type,
@@ -38,6 +40,8 @@ module RS(
   reg [31:0] imm [`RS_WIDTH-1:0];
   reg [31:0] addr [`RS_WIDTH-1:0];
   reg [`REG_ID_BIT-1:0] dest [`RS_WIDTH-1:0];
+
+  assign rs_full = size == `RS_WIDTH;
 
   integer i;
   integer flag;

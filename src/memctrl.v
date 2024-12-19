@@ -122,10 +122,10 @@ module memctrl(
           end
           case (width)
             0: value_load <= 0;
-            1: value_load <= {24'b0, temp[0]};
-            2: value_load <= {16'b0, temp[1], temp[0]};
-            3: value_load <= {8'b0, temp[2], temp[1], temp[0]};
-            4: value_load <= {temp[3], temp[2], temp[1], temp[0]};
+            1: value_load <= {24'b0, temp[1]};
+            2: value_load <= {16'b0, temp[2], temp[1]};
+            3: value_load <= {8'b0, temp[3], temp[2], temp[1]};
+            4: value_load <= {temp[4], temp[3], temp[2], temp[1]};
           endcase
         end else begin
           // store

@@ -6,7 +6,7 @@ module regfile(
   input wire rdy_in, // pause when low
 
   input wire [`REG_ID_BIT-1:0] reg_id,
-  input wire row, // 1: read, 0: write
+  input wire write_en, // write
   
   // write
   input wire in_rob, // 0: value, 1: rob_id
@@ -47,7 +47,7 @@ module regfile(
     end else if (!rdy_in) begin
       // pause
     end else begin
-      if (row) begin // read
+      if (write_en) begin // read
         if (busy[reg_id]) begin
           is_busy <= 1;
           reorder <= rob[reg_id];

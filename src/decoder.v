@@ -9,7 +9,6 @@ module Decoder(
   input wire valid,
   input wire [31:0] pc,
   input wire [31:0] inst,
-  input wire quit_stall,
   
   output wire [5:0] op_type,
   output wire [`REG_ID_BIT-1:0] rd,
@@ -60,11 +59,6 @@ module Decoder(
   localparam CodeLui = 7'b0110111, CodeAupic = 7'b0010111, CodeJal = 7'b1101111;
   localparam CodeJalr = 7'b1100111, CodeBr = 7'b1100011, CodeLoad = 7'b0000011;
   localparam CodeStore = 7'b0100011, CodeArithR = 7'b0110011, CodeArithI = 7'b0010011;
-
-  reg [31:0] pc_next;
-  reg stall;
-
-  wire[31:0] register[31:0];
 
   // instr processing
   wire [6:0] opcode = inst[6:0];
@@ -138,14 +132,9 @@ module Decoder(
                                           39) :
                  39;
 
-  assign to_rob = !(rob_full || stall);
-  assign to_lsb = (10 <= op_type && op_type <= 17) && !(lsb_full || stall);
-  assign to_rs = (op_type < 10 || op_type > 17) && op_type != 39 && !(rs_full || stall);
-
-  assign pc_next = to_rob ? pc :
-                 (opcode == CodeJal) ? (pc + imm_j) :
-                 (opcode == CodeBr) ? (pc + imm_b) :
-                 pc + 4;
+  assign to_rob = op_type != 39 && !rob_full;
+  assign to_lsb = (10 <= op_type && op_type <= 17) && !lsb_full;
+  assign to_rs = (op_type < 10 || op_type > 17) && op_type != 39 && !rs_full;
 
   assign rs1 = to_lsb ? rs1_raw :
                to_rs  ? ((3 <= op_type && op_type <= 37) ? rs1_raw : 0) :
@@ -168,22 +157,5 @@ module Decoder(
                     || (18 <= op_type && op_type <= 26) 
                     || op_type > 37 ? 0 : rd_raw;
 
-  always @(posedge clk_in) begin
-    if (rst_in) begin
-      // reset
-
-    end else if (!rdy_in) begin
-      // doing nothing
-    end else if (!(rob_full || stall)) begin
-      // processing
-      if (valid) begin
-
-      end
-    end else begin
-      if (quit_stall) begin
-        stall <= 0;
-      end
-    end
-  end
 endmodule //Decoder
 
