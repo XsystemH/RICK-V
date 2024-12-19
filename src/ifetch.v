@@ -20,6 +20,7 @@ module ifetch(
   input wire received, // from rob?
 
   // to predictor
+  output reg query,
   output reg [31:0] pc_to_predictor,
   // from predictor
   input wire predict,
@@ -74,23 +75,27 @@ module ifetch(
               inst <= inst_from_icache;
               pc_to_decoder <= pc;
               pc <= jal_pc;
+              query <= 0;
               state <= 0;
             end
             CodeJalr: begin
               inst <= inst_from_icache;
               pc_to_decoder <= pc;
+              query <= 0;
               state <= 3;
             end
             CodeBr: begin
               inst <= 0; // empty
               inst_temp <= inst_from_icache;
               pc_to_predictor <= pc;
+              query <= 1;
               state <= 2;
             end
             default: begin
               inst <= inst_from_icache;
               pc_to_decoder <= pc;
               pc <= pc + 4;
+              query <= 0;
               state <= 0;
             end
           endcase

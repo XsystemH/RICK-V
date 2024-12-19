@@ -7,6 +7,7 @@
 `include "./regfile.v"
 `include "./rs.v"
 `include "./lsb.v"
+`include "./predictor.v"
 // port modification allowed for debugging purposes
 
 module cpu(
@@ -82,6 +83,7 @@ wire [31:0] 	pc_to_icache;
 wire [31:0] 	inst;
 wire [31:0] 	pc_to_decoder;
 wire        	predict_result;
+wire          query;
 wire [31:0] 	pc_to_predictor;
 
 ifetch u_ifetch(
@@ -95,15 +97,35 @@ ifetch u_ifetch(
   .inst               	( inst                ),
   .pc_to_decoder      	( pc_to_decoder       ),
   .predict_result     	( predict_result      ),
-  .received           	( received            ),
+  .received           	( rob_received        ),
+  .query              	( query               ),
   .pc_to_predictor    	( pc_to_predictor     ),
-  .predict            	( predict             ),
+  .predict            	( predictor_result    ),
   .rob_to_ifetch      	( rob_to_ifetch       ),
   .next_pc_from_rob   	( next_pc_from_rob    ),
   .branch_pc_from_rob 	( branch_pc_from_rob  ),
   .prejudge           	( prejudge            ),
   .branch_result      	( branch_result       )
 );
+
+// outports wire
+wire        	predictor_result;
+
+predictor #(
+  .PREDICTOR_WIDTH 	( 3                   ),
+  .PREDICTOR_SIZE  	( 1<<3                ))
+u_predictor(
+  .clk            	( clk_in          ),
+  .rst            	( rst_in          ),
+  .rdy            	( rdy_in          ),
+  .query          	( query           ),
+  .query_pc       	( pc_to_predictor ),
+  .predict_result 	( predictor_result),
+  .update         	( update          ),
+  .update_pc      	( update_pc       ),
+  .update_result  	( update_result   )
+);
+
 
 // outports wire
 wire [5:0]                	op_type;
@@ -173,6 +195,7 @@ Decoder u_Decoder(
 // outports wire
 wire                      	rob_full;
 wire [`ROB_WIDTH_BIT-1:0] 	rob_free_id;
+wire                      	rob_received;
 wire                      	rob_rs1_is_ready;
 wire                      	rob_rs2_is_ready;
 wire [31:0]               	rob_rs1_value;
@@ -192,6 +215,7 @@ ROB u_ROB(
   .inst_pc          	( inst_pc           ),
   .rob_full         	( rob_full          ),
   .rob_free_id      	( rob_free_id       ),
+  .received         	( rob_received      ),
   .reoder_1         	( rs1_re            ),
   .reoder_2         	( rs2_re            ),
   .rob_rs1_is_ready 	( rob_rs1_is_ready  ),
@@ -289,7 +313,7 @@ lsb u_lsb(
   .imm_in      	( imm          ),
   .inst_pc_in  	( inst_pc      ),
   .dest_in     	( dest         ),
-  .received    	( received     ),
+  .received    	( lsb_received ),
   .has_result  	( has_result   ),
   .value_load  	( value_load   ),
   .go_work     	( go_work      ),

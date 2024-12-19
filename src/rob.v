@@ -17,6 +17,7 @@ module ROB(
   // to Decoder
   output wire rob_full,
   output wire [`ROB_WIDTH_BIT-1:0] rob_free_id,
+  output reg received,
   
   // with decoder & regfile
   input wire [`REG_ID_BIT-1:0] reoder_1,
@@ -74,6 +75,9 @@ module ROB(
         addr[tail] <= 0;
         guessed[tail] <= 0;
         tail <= tail + 1;
+        received <= 1;
+      end else begin
+        received <= 0;
       end
     end
   end
