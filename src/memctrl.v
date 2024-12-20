@@ -32,9 +32,9 @@ module memctrl(
 
   reg wr; // write/read state (1 for write)
   reg [31:0] address;
-  reg [2:0] finished;
-  reg [2:0] width;
-  reg [7:0] temp[4:0];
+  reg [3:0] finished; // 0 - 4 + 3
+  reg [3:0] width; // 0 - 4
+  reg [7:0] temp[7:0];
 
   reg last_served; // 0 for lsb, 1 for icache
 
@@ -74,7 +74,7 @@ module memctrl(
         icache_received <= 0;
         
         wr <= l_or_s;
-        width <= width_in;
+        width <= {1'b0, width_in};
         address <= lsb_address_in;
         finished <= 0;
         if (l_or_s) begin
@@ -94,49 +94,6 @@ module memctrl(
         width <= 4;
         address <= icache_address_in;
         finished <= 0;
-      end
-      if (finished < width) begin
-        if (wr) begin
-          // store
-          mem_wr <= 1;
-          mem_a <= address + {29'b0, finished};
-          mem_dout <= temp[finished];
-        end else begin
-          // load
-          mem_wr <= 0;
-          mem_a <= address + {29'b0, finished};
-          temp[finished] <= mem_din;
-        end
-        finished <= finished + 1;
-      end
-      if (finished == width) begin
-        if (!wr) begin
-          // load
-          if (last_served) begin
-            lsb_task_out <= 0;
-            icache_task_out <= 1;
-          end
-          else begin
-            lsb_task_out <= 1;
-            icache_task_out <= 0;
-          end
-          case (width)
-            0: value_load <= 0;
-            1: value_load <= {24'b0, temp[1]};
-            2: value_load <= {16'b0, temp[2], temp[1]};
-            3: value_load <= {8'b0, temp[3], temp[2], temp[1]};
-            4: value_load <= {temp[4], temp[3], temp[2], temp[1]};
-          endcase
-        end else begin
-          // store
-          lsb_task_out <= 0;
-          icache_task_out <= 0;
-          value_load <= 0;
-        end
-      end else begin
-        lsb_task_out <= 0;
-        icache_task_out <= 0;
-        value_load <= 0;
       end
     end
   end

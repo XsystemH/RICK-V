@@ -1,13 +1,5 @@
-`include "./memctrl.v"
-`include "./icache.v"
 // RISCV32 CPU top module
-`include "./ifetch.v"
-`include "./decoder.v"
-`include "./rob.v"
-`include "./regfile.v"
-`include "./rs.v"
-`include "./lsb.v"
-`include "./predictor.v"
+`include "const.v"
 // port modification allowed for debugging purposes
 
 module cpu(
@@ -25,12 +17,105 @@ module cpu(
 	output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
 );
 
-// outports wire
+// memctrl
 wire [31:0] 	value_load;
 wire        	lsb_received;
 wire        	lsb_task_out;
 wire        	icache_received;
 wire        	icache_task_out;
+
+// icache
+wire        	icache_to_memctrl;
+wire [31:0] 	address_from_icache;
+wire        	have_result;
+wire [31:0] 	inst_from_icache;
+
+// ifetch
+wire        	to_icache;
+wire [31:0] 	pc_to_icache;
+wire [31:0] 	inst;
+wire [31:0] 	pc_to_decoder;
+wire          query;
+wire [31:0] 	pc_to_predictor;
+wire          update;
+wire [31:0] 	update_pc;
+wire          update_result;
+wire        	predict_result;
+
+// predictor
+wire        	predictor_result;
+
+// decoder
+wire [5:0]                	op_type;
+wire [`REG_ID_BIT-1:0]    	rd;
+wire [`REG_ID_BIT-1:0]    	rs1;
+wire [`REG_ID_BIT-1:0]    	rs2;
+wire [31:0]               	imm;
+wire [31:0]               	inst_pc;
+wire                      	j;
+wire                      	k;
+wire [31:0]               	vj;
+wire [31:0]               	vk;
+wire [`ROB_WIDTH_BIT-1:0] 	qj;
+wire [`ROB_WIDTH_BIT-1:0] 	qk;
+wire                      	to_rob;
+wire [`REG_ID_BIT-1:0]    	dest;
+wire [31:0]               	rob_pc;
+wire                      	rob_guess;
+wire                      	to_rs;
+wire                      	to_lsb;
+wire [5:0]                	lsb_op;
+wire [31:0]               	lsb_imm;
+wire                      	reorder_en;
+wire [`REG_ID_BIT-1:0]    	reorder_reg;
+wire [`ROB_WIDTH_BIT-1:0] 	reorder_id;
+
+// rob
+wire                      	rob_full;
+wire [`ROB_WIDTH_BIT-1:0] 	rob_free_id;
+wire                      	rob_received;
+wire                      	rob_rs1_is_ready;
+wire                      	rob_rs2_is_ready;
+wire [31:0]               	rob_rs1_value;
+wire [31:0]               	rob_rs2_value;
+wire                      	jalr_finish;
+wire                      	branch_finish;
+wire [31:0]               	pc_next;
+wire [31:0]               	pc_branch;
+wire                      	pre;
+wire                      	ans;
+wire [`ROB_WIDTH_BIT-1:0] 	rob_head;
+wire                      	clear_all;
+wire                      	write_en;
+wire [`ROB_WIDTH_BIT-1:0] 	reg_id;
+wire [`REG_ID_BIT-1:0]    	rob_id;
+wire [31:0]               	value_out;
+
+// regfile
+wire                      	rs1_busy;
+wire                      	rs2_busy;
+wire [31:0]               	rs1_value;
+wire [31:0]               	rs2_value;
+wire [`ROB_WIDTH_BIT-1:0] 	rs1_re;
+wire [`ROB_WIDTH_BIT-1:0] 	rs2_re;
+
+// rs
+wire                      	rs_full;
+wire                      	rs_to_rob;
+wire [31:0]               	rs_value;
+wire [`REG_ID_BIT-1:0]    	rs_dest;
+wire [31:0]               	rs_new_PC;
+
+// lsb
+wire                      	lsb_full;
+wire                      	go_work;
+wire                      	l_or_s;
+wire [2:0]                	width;
+wire [31:0]               	address_from_lsb;
+wire [31:0]               	value_store;
+wire                      	lsb_to_rob;
+wire [`ROB_WIDTH_BIT-1:0] 	lsb_rob_id;
+wire [31:0]               	lsb_value;
 
 memctrl u_memctrl(
   .clk_in            	( clk_in             ),
@@ -54,12 +139,6 @@ memctrl u_memctrl(
   .icache_task_out   	( icache_task_out    )
 );
 
-// outports wire
-wire        	icache_to_memctrl;
-wire [31:0] 	address_from_icache;
-wire        	have_result;
-wire [31:0] 	inst_from_icache;
-
 icache #(
   .CACHE_WIDTH 	( 3    ),
   .CACHE_SIZE  	( 1<<3 ))
@@ -77,15 +156,6 @@ u_icache(
   .inst              	( inst_from_icache   )
 );
 
-// outports wire
-wire        	to_icache;
-wire [31:0] 	pc_to_icache;
-wire [31:0] 	inst;
-wire [31:0] 	pc_to_decoder;
-wire        	predict_result;
-wire          query;
-wire [31:0] 	pc_to_predictor;
-
 ifetch u_ifetch(
   .clk_in             	( clk_in              ),
   .rst_in             	( rst_in              ),
@@ -100,16 +170,17 @@ ifetch u_ifetch(
   .received           	( rob_received        ),
   .query              	( query               ),
   .pc_to_predictor    	( pc_to_predictor     ),
+  .update             	( update              ),
+  .update_pc          	( update_pc           ),
+  .update_result      	( update_result       ),
   .predict            	( predictor_result    ),
-  .rob_to_ifetch      	( rob_to_ifetch       ),
-  .next_pc_from_rob   	( next_pc_from_rob    ),
-  .branch_pc_from_rob 	( branch_pc_from_rob  ),
-  .prejudge           	( prejudge            ),
-  .branch_result      	( branch_result       )
+  .jalr_finish        	( jalr_finish         ),
+  .branch_finish      	( branch_finish       ),
+  .next_pc_from_rob   	( pc_next             ),
+  .branch_pc_from_rob 	( pc_branch           ),
+  .prejudge           	( pre                 ),
+  .branch_result      	( ans                 )
 );
-
-// outports wire
-wire        	predictor_result;
 
 predictor #(
   .PREDICTOR_WIDTH 	( 3                   ),
@@ -126,34 +197,10 @@ u_predictor(
   .update_result  	( update_result   )
 );
 
-
-// outports wire
-wire [5:0]                	op_type;
-wire [`REG_ID_BIT-1:0]    	rd;
-wire [`REG_ID_BIT-1:0]    	rs1;
-wire [`REG_ID_BIT-1:0]    	rs2;
-wire [31:0]               	imm;
-wire [31:0]               	inst_pc;
-wire                      	j;
-wire                      	k;
-wire [31:0]               	vj;
-wire [31:0]               	vk;
-wire [`ROB_WIDTH_BIT-1:0] 	qj;
-wire [`ROB_WIDTH_BIT-1:0] 	qk;
-wire                      	to_rob;
-wire [`REG_ID_BIT-1:0]    	dest;
-wire [31:0]               	rob_pc;
-wire                      	rob_guess;
-wire                      	to_rs;
-wire                      	to_lsb;
-wire [5:0]                	lsb_op;
-wire [31:0]               	lsb_imm;
-
-Decoder u_Decoder(
+decoder u_decoder(
   .clk_in           	( clk_in            ),
   .rst_in           	( rst_in            ),
   .rdy_in           	( rdy_in            ),
-  .valid            	( valid             ),
   .pc               	( pc_to_decoder     ),
   .inst             	( inst              ),
   .op_type          	( op_type           ),
@@ -189,19 +236,13 @@ Decoder u_Decoder(
   .lsb_full         	( lsb_full          ),
   .to_lsb           	( to_lsb            ),
   .lsb_op           	( lsb_op            ),
-  .lsb_imm          	( lsb_imm           )
+  .lsb_imm          	( lsb_imm           ),
+  .reorder_en       	( reorder_en        ),
+  .reorder_reg      	( reorder_reg       ),
+  .reorder_id       	( reorder_id        )
 );
 
-// outports wire
-wire                      	rob_full;
-wire [`ROB_WIDTH_BIT-1:0] 	rob_free_id;
-wire                      	rob_received;
-wire                      	rob_rs1_is_ready;
-wire                      	rob_rs2_is_ready;
-wire [31:0]               	rob_rs1_value;
-wire [31:0]               	rob_rs2_value;
-
-ROB u_ROB(
+rob u_rob(
   .clk_in           	( clk_in            ),
   .rst_in           	( rst_in            ),
   .rdy_in           	( rdy_in            ),
@@ -221,32 +262,38 @@ ROB u_ROB(
   .rob_rs1_is_ready 	( rob_rs1_is_ready  ),
   .rob_rs2_is_ready 	( rob_rs2_is_ready  ),
   .rob_rs1_value    	( rob_rs1_value     ),
-  .rob_rs2_value    	( rob_rs2_value     )
+  .rob_rs2_value    	( rob_rs2_value     ),
+  .jalr_finish      	( jalr_finish       ),
+  .branch_finish    	( branch_finish     ),
+  .pc_next          	( pc_next           ),
+  .pc_branch        	( pc_branch         ),
+  .pre              	( pre               ),
+  .ans              	( ans               ),
+  .rob_head         	( rob_head          ),
+  .clear_all        	( clear_all         ),
+  .rs_to_rob        	( rs_to_rob         ),
+  .rs_value         	( rs_value          ),
+  .rs_dest          	( rs_dest           ),
+  .lsb_to_rob       	( lsb_to_rob        ),
+  .lsb_value        	( lsb_value         ),
+  .lsb_dest         	( lsb_rob_id        ),
+  .rf_write_en      	( write_en          ),
+  .reg_id           	( reg_id            ),
+  .rob_id           	( rob_id            ),
+  .value_out        	( value_out         )
 );
-
-// outports wire
-wire                      	is_busy;
-wire [31:0]               	out_value;
-wire [`ROB_WIDTH_BIT-1:0] 	reorder;
-wire                      	rs1_busy;
-wire                      	rs2_busy;
-wire [31:0]               	rs1_value;
-wire [31:0]               	rs2_value;
-wire [`ROB_WIDTH_BIT-1:0] 	rs1_re;
-wire [`ROB_WIDTH_BIT-1:0] 	rs2_re;
 
 regfile u_regfile(
   .clk_in    	( clk_in     ),
   .rst_in    	( rst_in     ),
   .rdy_in    	( rdy_in     ),
+  .reorder_en ( reorder_en  ),
+  .reorder_reg( reorder_reg),
+  .reorder_id	( reorder_id ),
+  .write_en  	( write_en   ),
   .reg_id    	( reg_id     ),
-  .write_en   ( write_en   ),
-  .in_rob    	( in_rob     ),
-  .value     	( value      ),
   .rob_id    	( rob_id     ),
-  .is_busy   	( is_busy    ),
-  .out_value 	( out_value  ),
-  .reorder   	( reorder    ),
+  .value     	( value_out  ),
   .rs1       	( rs1        ),
   .rs2       	( rs2        ),
   .rs1_busy  	( rs1_busy   ),
@@ -257,14 +304,7 @@ regfile u_regfile(
   .rs2_re    	( rs2_re     )
 );
 
-// outports wire
-wire                      	rs_full;
-wire                      	has_result;
-wire [31:0]               	value;
-wire [`REG_ID_BIT-1:0]    	dest_out;
-wire [31:0]               	new_PC;
-
-RS u_RS(
+rs u_rs(
   .clk_in     	( clk_in      ),
   .rst_in     	( rst_in      ),
   .rdy_in     	( rdy_in      ),
@@ -280,22 +320,14 @@ RS u_RS(
   .dest_in    	( dest        ),
   .imm_in     	( imm         ),
   .inst_pc    	( inst_pc     ),
-  .has_result 	( has_result  ),
-  .value      	( value       ),
-  .dest_out   	( dest_out    ),
-  .new_PC     	( new_PC      )
+  .rs_to_rob 	  ( rs_to_rob   ),
+  .value      	( rs_value    ),
+  .dest_out   	( rs_dest     ),
+  .lsb_to_rs  	( lsb_to_rob  ),
+  .lsb_rob_id 	( lsb_rob_id  ),
+  .lsb_value	  ( lsb_value   ),
+  .new_PC     	( rs_new_PC   )
 );
-
-// outports wire
-wire                      	lsb_full;
-wire                      	go_work;
-wire                      	l_or_s;
-wire [2:0]                	width;
-wire [31:0]               	address_from_lsb;
-wire [31:0]               	value_store;
-wire                      	lsb_to_rob;
-wire [`ROB_WIDTH_BIT-1:0] 	rob_id;
-wire [31:0]               	value;
 
 lsb u_lsb(
   .clk_in      	( clk_in       ),
@@ -314,16 +346,17 @@ lsb u_lsb(
   .inst_pc_in  	( inst_pc      ),
   .dest_in     	( dest         ),
   .received    	( lsb_received ),
-  .has_result  	( has_result   ),
+  .has_result  	( lsb_task_out ),
   .value_load  	( value_load   ),
   .go_work     	( go_work      ),
   .l_or_s      	( l_or_s       ),
   .width       	( width        ),
   .address     	( address_from_lsb),
   .value_store 	( value_store  ),
+  .rob_head    	( rob_head     ),
   .lsb_to_rob  	( lsb_to_rob   ),
-  .rob_id      	( rob_id       ),
-  .value       	( value        )
+  .rob_id_out  	( lsb_rob_id   ),
+  .value       	( lsb_value    )
 );
 
 

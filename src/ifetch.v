@@ -22,11 +22,15 @@ module ifetch(
   // to predictor
   output reg query,
   output reg [31:0] pc_to_predictor,
+  output reg update,
+  output reg [31:0] update_pc,
+  output reg update_result,
   // from predictor
   input wire predict,
 
   // from rob
-  input wire rob_to_ifetch,
+  input wire jalr_finish,
+  input wire branch_finish,
   input wire [31:0] next_pc_from_rob,
   input wire [31:0] branch_pc_from_rob,
   input wire prejudge,
@@ -67,8 +71,7 @@ module ifetch(
         pc_to_icache <= pc;
         inst <= 0;
         state <= 1;
-      end
-      if (state == 1) begin // waiting for icache
+      end else if (state == 1) begin // waiting for icache
         if (have_result) begin
           case (opcode)
             CodeJal: begin
@@ -100,26 +103,31 @@ module ifetch(
             end
           endcase
         end // else wait for icache
-      end
-      if (state == 2) begin // waitied a cycle for predictor
+      end else if (state == 2) begin // waitied a cycle for predictor
         inst <= inst_temp;
         pc_to_decoder <= pc;
         pc <= predict ? branch_pc : pc + 4;
         predict_result <= predict;
 
         state <= 0;
-      end
-      if (state == 3) begin // waited for rob
+      end else if (state == 3) begin // waited for rob
         inst <= 0;
-        if (rob_to_ifetch) begin
+        if (jalr_finish) begin
           pc <= next_pc_from_rob;
           state <= 0;
         end
       end
-
-      if (rob_to_ifetch && prejudge) begin
-        pc <= branch_pc_from_rob;
+      if (branch_finish) begin
+        if (prejudge != branch_result) begin
+          pc <= next_pc_from_rob;
+        end
         state <= 0;
+
+        // predictor update
+        query <= 0;
+        update <= 1;
+        update_pc <= branch_pc_from_rob;
+        update_result <= branch_result;
       end
     end
   end

@@ -5,18 +5,16 @@ module regfile(
   input wire rst_in, // reset when high
   input wire rdy_in, // pause when low
 
-  input wire [`REG_ID_BIT-1:0] reg_id,
-  input wire write_en, // write
-  
-  // write
-  input wire in_rob, // 0: value, 1: rob_id
-  input wire [31:0] value,
-  input wire [`ROB_WIDTH_BIT-1:0] rob_id,
+  // from decoder
+  input wire reorder_en,
+  input wire [`REG_ID_BIT-1:0] reorder_reg,
+  input wire [`ROB_WIDTH_BIT-1:0] reorder_id,
 
-  // read
-  output reg is_busy, // 0: valid, 1: rob_id
-  output reg [31:0] out_value,
-  output reg [`ROB_WIDTH_BIT-1:0] reorder,
+  // from rob
+  input wire write_en,
+  input wire [`REG_ID_BIT-1:0] reg_id,
+  input wire [`ROB_WIDTH_BIT-1:0] rob_id,
+  input wire [31:0] value,
 
   // with decoder
   input wire [`REG_ID_BIT-1:0] rs1,
@@ -47,22 +45,14 @@ module regfile(
     end else if (!rdy_in) begin
       // pause
     end else begin
-      if (write_en) begin // read
-        if (busy[reg_id]) begin
-          is_busy <= 1;
-          reorder <= rob[reg_id];
-        end else begin
-          is_busy <= 0;
-          out_value <= regs[reg_id];
-        end
-      end else begin // write
-        if (in_rob) begin
-          busy[reg_id] <= 1;
-          rob[reg_id] <= rob_id;
-        end else begin
-          busy[reg_id] <= 0;
-          regs[reg_id] <= value;
-        end
+      if (write_en) begin // write
+        regs[reg_id] <= value;
+        busy[reg_id] <= rob[reg_id] != rob_id;
+      end
+
+      if (reorder_en) begin // reorder
+        busy[reorder_reg] <= 1;
+        rob[reorder_reg] <= reorder_id;
       end
     end
   end

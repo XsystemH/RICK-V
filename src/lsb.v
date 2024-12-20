@@ -30,9 +30,12 @@ module lsb(
   output reg [31:0] address,
   output reg [31:0] value_store,
 
+  // from ROB
+  input wire [`ROB_WIDTH_BIT-1:0] rob_head,
+
   // to CDB
   output reg lsb_to_rob,
-  output reg [`ROB_WIDTH_BIT-1:0] rob_id,
+  output reg [`ROB_WIDTH_BIT-1:0] rob_id_out,
   output reg [31:0] value
 );
 
@@ -49,6 +52,7 @@ module lsb(
   reg [31:0] imm [`LSB_WIDTH-1:0];
   reg [31:0] inst_pc [`LSB_WIDTH-1:0];
   reg [`REG_ID_BIT-1:0] dest [`LSB_WIDTH-1:0];
+  reg [`ROB_WIDTH_BIT-1:0] rob_id [`LSB_WIDTH-1:0];
 
   reg [5:0] last_op;
   reg [`REG_ID_BIT-1:0] last_dest;
@@ -58,6 +62,7 @@ module lsb(
 
   assign lsb_full = full;
 
+  integer i;
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
@@ -83,6 +88,7 @@ module lsb(
       if (!empty && j[head] && k[head]) begin // boardcast all the time
         if (10 <= op[head] && op[head] <= 15) begin
           // load
+          go_work <= 1;
           l_or_s <= 0;
           address <= vj[head] + imm[head];
           width <= op[head] == 10 ? 1 :
@@ -92,7 +98,8 @@ module lsb(
                    op[head] == 14 ? 2 : 0; // no sign ext
           last_dest <= dest[head];
         end else if (20 <= op[head] && op[head] <= 25) begin
-          // store
+          // store should be done when at the top of ROB
+          go_work <= rob_head == rob_id[head];
           l_or_s <= 1;
           address <= vj[head] + imm[head];
           width <= op[head] == 20 ? 1 :
@@ -101,6 +108,8 @@ module lsb(
           value_store <= (op[head] == 20) ? (vk[head] & 32'h000000ff) :
                        (op[head] == 21) ? (vk[head] & 32'h0000ffff) :
                        (op[head] == 22) ? vk[head] : 0;
+        end else begin
+          go_work <= 0;
         end
       end
       if (received) begin // head + 1 when memctrl received
@@ -115,7 +124,25 @@ module lsb(
         value <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
                  last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
                  value_load;
-        rob_id <= last_dest;
+        rob_id_out <= last_dest;
+
+        // renew lsb itself
+        for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+          if (busy[i]) begin
+            if (qj[i] == last_dest && j[i] == 0) begin
+              j[i] <= 1;
+              vj[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                       last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                       value_load;
+            end
+            if (qk[i] == last_dest && k[i] == 0) begin
+              k[i] <= 1;
+              vk[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                       last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                       value_load;
+            end
+          end
+        end
       end else begin
         lsb_to_rob <= 0;
       end

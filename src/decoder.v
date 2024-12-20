@@ -1,12 +1,11 @@
 `include "const.v"
 
-module Decoder(
+module decoder(
   input wire clk_in,
   input wire rst_in, // reset when high
   input wire rdy_in, // pause when low
 
   // from OP Queue
-  input wire valid,
   input wire [31:0] pc,
   input wire [31:0] inst,
   
@@ -54,7 +53,12 @@ module Decoder(
   // to LSB
   output wire to_lsb,
   output wire [5:0] lsb_op,
-  output wire [31:0] lsb_imm
+  output wire [31:0] lsb_imm,
+
+  // to regfile
+  output wire reorder_en,
+  output wire [`REG_ID_BIT-1:0] reorder_reg,
+  output wire [`ROB_WIDTH_BIT-1:0] reorder_id
 );
   localparam CodeLui = 7'b0110111, CodeAupic = 7'b0010111, CodeJal = 7'b1101111;
   localparam CodeJalr = 7'b1100111, CodeBr = 7'b1100011, CodeLoad = 7'b0000011;
@@ -156,6 +160,10 @@ module Decoder(
   assign dest = (4 <= op_type && op_type <= 9) 
                     || (18 <= op_type && op_type <= 26) 
                     || op_type > 37 ? 0 : rd_raw;
+
+  assign reorder_en = op_type != 39;
+  assign reorder_reg = dest;
+  assign reorder_id = rob_free_id;
 
 endmodule //Decoder
 
