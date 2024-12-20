@@ -48,16 +48,19 @@ module ifetch(
   // - jar, modify pc
   // - branch, 1 cycle stall to get guess
   // - jalr, stall until address is ready
-  wire [6:0] opcode = inst[6:0];
+  wire [6:0] opcode = inst_from_icache[6:0];
   // jal
-  wire [31:0] jal_imm = {{11{inst[31]}}, inst[31], inst[19:12], inst[20], inst[30:21], 1'b0};
+  wire [31:0] jal_imm = {{11{inst_from_icache[31]}}, inst_from_icache[31], inst_from_icache[19:12], inst_from_icache[20], inst_from_icache[30:21], 1'b0};
   wire [31:0] jal_pc = pc + jal_imm;
   // branch
-  wire [31:0] branch_imm = {{19{inst[31]}}, inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
+  wire [31:0] branch_imm = {{19{inst_from_icache[31]}}, inst_from_icache[31], inst_from_icache[7], inst_from_icache[30:25], inst_from_icache[11:8], 1'b0};
   wire [31:0] branch_pc = pc + branch_imm;
 
   always @(posedge clk_in) begin
     if (rst_in) begin
+      pc <= 0;
+      state <= 0;
+      inst_temp <= 0;
       to_icache <= 0;
       pc_to_icache <= 0;
       inst <= 0;
@@ -102,7 +105,12 @@ module ifetch(
               state <= 0;
             end
           endcase
-        end // else wait for icache
+          to_icache <= 0;
+        end else begin
+          inst <= 0;
+          to_icache <= 0;
+        end
+
       end else if (state == 2) begin // waitied a cycle for predictor
         inst <= inst_temp;
         pc_to_decoder <= pc;

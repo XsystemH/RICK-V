@@ -66,6 +66,12 @@ module lsb(
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
+      head <= 0;
+      tail <= 0;
+      for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+        busy[i] <= 0;
+      end
+      go_work <= 0;
     end else if (!rdy_in) begin
       // pause
     end else begin

@@ -9,16 +9,17 @@ module icache#(
   input wire rdy, // pause when low
 
   // from memctrl
+  input wire received,
   input wire memctrl_to_icache,
   input wire [31:0] inst_in,
   // to memctrl
   output reg icache_to_memctrl,
   output reg [31:0] address,
 
-  // from Decoder
+  // from ifetch
   input wire to_icache,
   input wire [31:0] pc,
-  // to Decoder
+  // to ifetch
   output reg have_result,
   output reg [31:0] inst
 );
@@ -28,25 +29,29 @@ module icache#(
   reg [31:0] cache_block_addr[CACHE_SIZE-1:0];
   reg [31:0] cache_block[CACHE_SIZE-1:0];
 
-  wire [CACHE_WIDTH-1:0] block_index;
-  wire [31:0] head_addr = {pc[31:2], 2'b00};
+  wire [CACHE_WIDTH-1:0] block_index = pc[CACHE_WIDTH:1];
+  wire [31:0] head_addr = {pc[31:1], 1'b0};
 
-  assign block_index = pc[CACHE_WIDTH+1:2];
-
+  integer i;
   always @(posedge clk) begin
     if (rst) begin
       state <= 0;
+      for (i = 0; i < CACHE_SIZE; i = i + 1) begin
+        valid[i] <= 0;
+      end
     end else if (!rdy) begin
       // pause
     end else begin
       if (state == 0) begin // IDLE
         if (to_icache) begin
-          // hit
           if (valid[block_index] && cache_block_addr[block_index] == head_addr) begin
+            // hit
+            $display("at pc %h, icache hit", pc);
             inst <= cache_block[block_index];
             have_result <= 1;
           end else begin
             // miss
+            $display("at pc %h, icache miss", pc);
             icache_to_memctrl <= 1;
             address <= head_addr;
             state <= 1;
@@ -54,15 +59,23 @@ module icache#(
             have_result <= 0;
           end
         end else begin
+          icache_to_memctrl <= 0;
           have_result <= 0;
         end
       end else begin // WAITING
+        if (received) begin
+          icache_to_memctrl <= 0;
+        end
         if (memctrl_to_icache) begin
+          icache_to_memctrl <= 0;
           cache_block[block_index] <= inst_in;
           cache_block_addr[block_index] <= head_addr;
           valid[block_index] <= 1;
           have_result <= 1;
+          inst <= inst_in;
           state <= 0;
+        end else begin
+          have_result <= 0;
         end
       end
     end

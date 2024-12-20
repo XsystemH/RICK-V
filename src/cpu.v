@@ -31,7 +31,7 @@ wire        	have_result;
 wire [31:0] 	inst_from_icache;
 
 // ifetch
-wire        	to_icache;
+wire          to_icache;
 wire [31:0] 	pc_to_icache;
 wire [31:0] 	inst;
 wire [31:0] 	pc_to_decoder;
@@ -146,6 +146,7 @@ u_icache(
   .clk               	( clk_in             ),
   .rst               	( rst_in             ),
   .rdy               	( rdy_in             ),
+  .received   	      ( icache_received    ),
   .memctrl_to_icache 	( icache_task_out    ),
   .inst_in           	( value_load         ),
   .icache_to_memctrl 	( icache_to_memctrl  ),
@@ -370,6 +371,7 @@ lsb u_lsb(
 // - 0x30004 read: read clocks passed since cpu starts (in dword, 4 bytes)
 // - 0x30004 write: indicates program stop (will output '\0' through uart tx)
 
+integer t = 0;
 always @(posedge clk_in)
   begin
     if (rst_in)
@@ -382,7 +384,8 @@ always @(posedge clk_in)
       end
     else
       begin
-      
+      $display("clk=%d", t);
+      t = t + 1;
       end
   end
 

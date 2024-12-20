@@ -80,7 +80,11 @@ module rob(
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
-      
+      head <= 0;
+      tail <= 0;
+      for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
+        busy[i] <= 0;
+      end
     end else if (!rdy_in) begin
       // pause
     end else begin
@@ -148,6 +152,7 @@ module rob(
         imm_[tail] <= imm;
         addr[tail] <= inst_pc;
         guessed[tail] <= 0;
+        $display("ROB: %d %d %d %d %d %d %d %d %d", head, tail, busy[tail], op[tail], state[tail], dest[tail], value[tail], imm_[tail], addr[tail]);
         tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
         received <= 1;
       end else begin
