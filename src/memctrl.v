@@ -27,7 +27,10 @@ module memctrl(
   input wire [31:0] icache_address_in,
   // to icache
   output reg icache_received,
-  output reg icache_task_out
+  output reg icache_task_out,
+
+  // from rob
+  input wire HALT
 );
 
   reg wr; // write/read state (1 for write)
@@ -159,6 +162,13 @@ module memctrl(
       end else begin
         lsb_task_out <= 0;
         icache_task_out <= 0;
+      end
+
+      if (HALT) begin
+        $display("memctrl: HALT");
+        mem_wr <= 1; // write
+        mem_a <= 32'h00030004;
+        mem_dout <= 8'b0;
       end
     end
   end

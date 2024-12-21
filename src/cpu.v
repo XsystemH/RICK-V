@@ -88,6 +88,7 @@ wire                      	write_en;
 wire [`ROB_WIDTH_BIT-1:0] 	reg_id;
 wire [`REG_ID_BIT-1:0]    	rob_id;
 wire [31:0]               	value_out;
+wire                      	HALT;
 
 // regfile
 wire                      	rs1_busy;
@@ -136,7 +137,8 @@ memctrl u_memctrl(
   .icache_in         	( icache_to_memctrl  ),
   .icache_address_in 	( address_from_icache),
   .icache_received   	( icache_received    ),
-  .icache_task_out   	( icache_task_out    )
+  .icache_task_out   	( icache_task_out    ),
+  .HALT             	( HALT               )
 );
 
 icache #(
@@ -284,7 +286,8 @@ rob u_rob(
   .sb_dest         	  ( sb_rob_id         ),
   .reg_id           	( reg_id            ),
   .rob_id           	( rob_id            ),
-  .value_out        	( value_out         )
+  .value_out        	( value_out         ),
+  .HALT             	( HALT              )
 );
 
 regfile u_regfile(

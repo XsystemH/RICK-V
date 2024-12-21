@@ -172,6 +172,8 @@ module lsb(
             end
           end
         end
+      end else begin
+        lb_to_rob <= 0;
       end
     end
   end

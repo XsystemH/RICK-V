@@ -51,7 +51,9 @@ module rob(
   // to regfile
   output reg [`REG_ID_BIT-1:0] reg_id,
   output reg [`ROB_WIDTH_BIT-1:0] rob_id,
-  output reg [31:0] value_out
+  output reg [31:0] value_out,
+
+  output reg HALT
 );
 // buffer
   reg busy [`ROB_WIDTH-1:0];
@@ -93,6 +95,7 @@ module rob(
         flag = 0;
         if (op[head] == 39) begin // exit
           // todo: HALT
+          HALT <= 1;
         end
         if (op[head] == 3) begin // jalr
           // decoder stall false
