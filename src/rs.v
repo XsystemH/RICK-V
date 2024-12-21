@@ -59,6 +59,7 @@ module rs(
       for (i = 0; i < `RS_WIDTH; i = i + 1) begin
         busy[i] <= 0;
       end
+      rs_to_rob <= 0;
     end else if (!rdy_in) begin
       // pause
     end else begin
@@ -81,6 +82,7 @@ module rs(
         imm[id] <= imm_in;
         addr[id] <= inst_pc;
         dest[id] <= dest_in;
+        $display("RS got: id: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", id, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc, dest_in);
       end
       // execute
       if (size != 0) begin
@@ -204,7 +206,11 @@ module rs(
               end
             end
           end
+        end else begin
+          rs_to_rob <= 0;
         end
+      end else begin
+        rs_to_rob <= 0;
       end
       // listen
       if (lsb_to_rs) begin

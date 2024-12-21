@@ -39,18 +39,24 @@ module regfile(
   assign rs1_re = busy[rs1] ? rob[rs1] : 0;
   assign rs2_re = busy[rs2] ? rob[rs2] : 0;
 
+  integer i;
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
+      for (i = 0; i < `REG_ID_WIDTH; i = i + 1) begin
+        busy[i] <= 0;
+        regs[i] <= 0;
+        rob[i] <= 0;
+      end
     end else if (!rdy_in) begin
       // pause
     end else begin
-      if (write_en) begin // write
+      if (write_en && reg_id != 0) begin // write
         regs[reg_id] <= value;
         busy[reg_id] <= rob[reg_id] != rob_id;
       end
 
-      if (reorder_en) begin // reorder
+      if (reorder_en && reg_id != 0) begin // reorder
         busy[reorder_reg] <= 1;
         rob[reorder_reg] <= reorder_id;
       end

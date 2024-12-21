@@ -46,12 +46,12 @@ module icache#(
         if (to_icache) begin
           if (valid[block_index] && cache_block_addr[block_index] == head_addr) begin
             // hit
-            $display("at pc %h, icache hit", pc);
+            $display("\nat pc %h, icache hit", pc);
             inst <= cache_block[block_index];
             have_result <= 1;
           end else begin
             // miss
-            $display("at pc %h, icache miss", pc);
+            $display("\nat pc %h, icache miss", pc);
             icache_to_memctrl <= 1;
             address <= head_addr;
             state <= 1;

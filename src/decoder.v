@@ -5,12 +5,15 @@ module decoder(
   input wire rst_in, // reset when high
   input wire rdy_in, // pause when low
 
-  // from OP Queue
+  // from ifetch
+  input wire to_decoder,
   input wire [31:0] pc,
   input wire [31:0] inst,
+  input wire predict,
+  // to ifetch
+  output wire [31:0] next_pc,
   
   output wire [5:0] op_type,
-  output wire [`REG_ID_BIT-1:0] rd,
   output wire [`REG_ID_BIT-1:0] rs1,
   output wire [`REG_ID_BIT-1:0] rs2,
   output wire [31:0] imm,
@@ -52,8 +55,6 @@ module decoder(
   input wire lsb_full,
   // to LSB
   output wire to_lsb,
-  output wire [5:0] lsb_op,
-  output wire [31:0] lsb_imm,
 
   // to regfile
   output wire reorder_en,
@@ -73,15 +74,22 @@ module decoder(
   wire [4:0] rd_raw = inst[11:7];
 
   // imm
-  wire [31:0] imm_u = {inst[31:12], 12'b0};
+  wire [31:0] imm_u = {12'b0, inst[31:12]};
   wire [31:0] imm_j = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
   wire [31:0] imm_i = {{20{inst[31]}}, inst[31:20]};
   wire [31:0] imm_b = {{19{inst[31]}}, inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
   wire [31:0] imm_s = {{20{inst[31]}}, inst[31:25], inst[11:7]};
   
+  // jal
+  wire [31:0] jal_imm = {{11{inst[31]}}, inst[31], inst[19:12], inst[20], inst[30:21], 1'b0};
+  wire [31:0] jal_pc = pc + jal_imm;
+  // branch
+  wire [31:0] branch_imm = {{19{inst[31]}}, inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
+  wire [31:0] branch_pc = pc + branch_imm;
+
   // combinatorial logic
 
-  assign inst_pc = (opcode == CodeJalr) ? (({25'b0, func7} << 5) + {27'b0, rs2_raw} | (func7[6] ? 32'hfffff000 : 32'h0)) : 0;
+  assign inst_pc = pc;
 
   assign imm = (opcode == CodeLui) ? imm_u :
                (opcode == CodeAupic) ? (imm_u + pc) :
@@ -112,34 +120,34 @@ module decoder(
                                          (func3 == 3'b001) ? 16 :
                                          (func3 == 3'b010) ? 17 :
                                          39) :
-                 (opcode == CodeArithI) ? ((func3 == 3'b000) ? 18 :
+                 (opcode == CodeArithI) ? ((inst == 32'h0ff00513) ? 38 : // exit
+                                          (func3 == 3'b000) ? 18 :
                                           (func3 == 3'b010) ? 19 :
                                           (func3 == 3'b011) ? 20 :
                                           (func3 == 3'b100) ? 21 :
                                           (func3 == 3'b110) ? 22 :
                                           (func3 == 3'b111) ? 23 :
                                           (func3 == 3'b001) ? 24 :
-                                          (func3 == 3'b101 && func7[5]) ? 26 :
-                                          (func3 == 3'b101) ? 25 :
-                                          (inst == 32'h0ff00513) ? 38 :
+                                          (func3 == 3'b101 && func7 == 0) ? 25 : // slli
+                                          (func3 == 3'b101) ? 26 : // srli
                                           39) :
-                 (opcode == CodeArithR) ? ((func3 == 3'b000 && func7[5]) ? 29 :
-                                          (func3 == 3'b000) ? 28 :
-                                          (func3 == 3'b001) ? 30 :
-                                          (func3 == 3'b010) ? 31 :
-                                          (func3 == 3'b011) ? 32 :
-                                          (func3 == 3'b100) ? 33 :
-                                          (func3 == 3'b101 && func7[5]) ? 35 :
-                                          (func3 == 3'b101) ? 34 :
+                 (opcode == CodeArithR) ? ((func3 == 3'b000 && func7 == 0) ? 27 : // add
+                                          (func3 == 3'b000) ? 28 : // sub
+                                          (func3 == 3'b001) ? 29 :
+                                          (func3 == 3'b010) ? 30 :
+                                          (func3 == 3'b011) ? 31 :
+                                          (func3 == 3'b100) ? 32 :
+                                          (func3 == 3'b101 && func7 == 0) ? 33 : // srl
+                                          (func3 == 3'b101) ? 34 : // sra
                                           (func3 == 3'b110) ? 36 :
                                           (func3 == 3'b111) ? 37 :
                                           39) :
                  39;
 
-  assign to_rob = op_type != 39 && !rob_full;
-  assign to_lsb = (10 <= op_type && op_type <= 17) && !lsb_full;
-  assign to_rs = (op_type < 10 || op_type > 17) && op_type != 39 && !rs_full;
-
+  assign to_lsb = to_decoder && (10 <= op_type && op_type <= 17) && !lsb_full;
+  assign to_rs  = to_decoder && (op_type < 10 || op_type > 17)   && !rs_full;
+  assign to_rob = to_decoder && !rob_full && (to_lsb || to_rs);
+  
   assign rs1 = to_lsb ? rs1_raw :
                to_rs  ? ((3 <= op_type && op_type <= 37) ? rs1_raw : 0) :
                0;
@@ -161,7 +169,14 @@ module decoder(
                     || (18 <= op_type && op_type <= 26) 
                     || op_type > 37 ? 0 : rd_raw;
 
-  assign reorder_en = op_type != 39;
+  assign next_pc = to_rob ? (opcode == CodeJal  ? jal_pc : 
+                             opcode == CodeJalr ? pc : 
+                             opcode == CodeBr   ? predict ? branch_pc : 
+                                                            pc + 4 :
+                                                  pc + 4) : 
+                            pc;
+
+  assign reorder_en = to_decoder && dest != 0;
   assign reorder_reg = dest;
   assign reorder_id = rob_free_id;
 

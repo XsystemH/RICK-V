@@ -14,10 +14,10 @@ module rob(
   input wire [`REG_ID_BIT-1:0] rs2,
   input wire [31:0] imm,
   input wire [31:0] inst_pc,
+  input wire predictor_result,
   // to Decoder
   output wire rob_full,
   output wire [`ROB_WIDTH_BIT-1:0] rob_free_id,
-  output reg received,
   
   // with decoder & regfile
   input wire [`REG_ID_BIT-1:0] reoder_1,
@@ -42,12 +42,13 @@ module rob(
   input wire rs_to_rob,
   input wire [31:0] rs_value,
   input wire [`REG_ID_BIT-1:0] rs_dest,
-  input wire lsb_to_rob,
-  input wire [31:0] lsb_value,
-  input wire [`REG_ID_BIT-1:0] lsb_dest,
+  input wire lb_to_rob,
+  input wire [31:0] lb_value,
+  input wire [`REG_ID_BIT-1:0] lb_dest,
+  input wire sb_to_rob,
+  input wire [`REG_ID_BIT-1:0] sb_dest,
 
   // to regfile
-  output reg rf_write_en,
   output reg [`REG_ID_BIT-1:0] reg_id,
   output reg [`ROB_WIDTH_BIT-1:0] rob_id,
   output reg [31:0] value_out
@@ -134,6 +135,8 @@ module rob(
           rob_id <= head;
           value_out <= value[head];
 
+          state[head] <= 2; // write back
+          busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
         // free reg
@@ -144,6 +147,10 @@ module rob(
       end
       
       if (to_rob) begin
+        $display("current rob head: %d, tail: %d", head, tail);
+        for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
+          $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
+        end
         busy[tail] <= 1;
         op[tail] <= op_type;
         state[tail] <= 0;
@@ -151,22 +158,25 @@ module rob(
         value[tail] <= 0;
         imm_[tail] <= imm;
         addr[tail] <= inst_pc;
-        guessed[tail] <= 0;
-        $display("ROB: %d %d %d %d %d %d %d %d %d", head, tail, busy[tail], op[tail], state[tail], dest[tail], value[tail], imm_[tail], addr[tail]);
+        guessed[tail] <= predictor_result;
+        $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
         tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
-        received <= 1;
-      end else begin
-        received <= 0;
       end
 
       // listen
       if (rs_to_rob) begin
+        $display("rob# %d got %d from rs", rs_dest, rs_value);
         state[rs_dest] <= 1; // excute
         value[rs_dest] <= rs_value;
       end
-      if (lsb_to_rob) begin
-        state[lsb_dest] <= 1; // excute
-        value[lsb_dest] <= lsb_value;
+      if (lb_to_rob) begin
+        $display("rob# %d got %d from lb", lb_dest, lb_value);
+        state[lb_dest] <= 1; // excute
+        value[lb_dest] <= lb_value;
+      end
+      if (sb_to_rob) begin
+        $display("rob# %d finished by sb", sb_dest);
+        state[sb_dest] <= 1; // excute
       end
     end
   end

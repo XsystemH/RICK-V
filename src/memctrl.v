@@ -36,11 +36,11 @@ module memctrl(
   reg [2:0] width; // 0 - 4
   reg [7:0] temp[7:0];
 
-  reg last_served; // 0 for lsb, 1 for icache
+  reg [1:0] last_served; // 1 for lsb, 2 for icache
 
   reg state; // 0: idle 1: working
   wire [1:0] serve = state ? 0 : // didn;t finish yet
-                     last_served ? lsb_in ? 1 : 
+                     last_served == 2 ? lsb_in ? 1 : 
                                             (icache_in ? 2 : 0) :
                                    icache_in ? 2 :
                                             (lsb_in ? 1 : 0); // decide which to serve fairly
@@ -78,7 +78,7 @@ module memctrl(
           state <= 1; // start to serve
         end
         if (serve == 1) begin
-          last_served <= 0;
+          last_served <= 1;
           lsb_received <= 1;
           icache_received <= 0;
         
@@ -98,7 +98,7 @@ module memctrl(
           end
         end
         if (serve == 2) begin
-          last_served <= 1;
+          last_served <= 2;
           lsb_received <= 0;
           icache_received <= 1;
 
@@ -133,11 +133,11 @@ module memctrl(
         end else begin
           if (!wr) begin
             // load
-            if (last_served) begin
+            if (last_served == 2) begin
               lsb_task_out <= 0;
               icache_task_out <= 1;
             end
-            else begin
+            else if (last_served == 1) begin
               lsb_task_out <= 1;
               icache_task_out <= 0;
             end
