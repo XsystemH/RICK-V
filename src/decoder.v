@@ -74,9 +74,10 @@ module decoder(
   wire [4:0] rd_raw = inst[11:7];
 
   // imm
-  wire [31:0] imm_u = {12'b0, inst[31:12]};
+  wire [31:0] imm_u = {inst[31:12], 12'b0};
   wire [31:0] imm_j = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
   wire [31:0] imm_i = {{20{inst[31]}}, inst[31:20]};
+  wire [31:0] imm_i_= {{27{inst[31]}}, inst[24:20]};
   wire [31:0] imm_b = {{19{inst[31]}}, inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
   wire [31:0] imm_s = {{20{inst[31]}}, inst[31:25], inst[11:7]};
   
@@ -90,14 +91,6 @@ module decoder(
   // combinatorial logic
 
   assign inst_pc = pc;
-
-  assign imm = (opcode == CodeLui) ? imm_u :
-               (opcode == CodeAupic) ? (imm_u + pc) :
-               (opcode == CodeJal) ? (pc + 4) :
-               (opcode == CodeJalr) ? (pc + 4) :
-               (opcode == CodeBr || opcode == CodeLoad || opcode == CodeArithI) ? imm_i :
-               (opcode == CodeStore) ? imm_s :
-               0;
 
   assign op_type = (opcode == CodeLui) ? 0 :
                    (opcode == CodeAupic) ? 1 :
@@ -133,28 +126,38 @@ module decoder(
                                           39) :
                  (opcode == CodeArithR) ? ((func3 == 3'b000 && func7 == 0) ? 27 : // add
                                           (func3 == 3'b000) ? 28 : // sub
-                                          (func3 == 3'b001) ? 29 :
-                                          (func3 == 3'b010) ? 30 :
-                                          (func3 == 3'b011) ? 31 :
-                                          (func3 == 3'b100) ? 32 :
+                                          (func3 == 3'b001) ? 29 : // sll
+                                          (func3 == 3'b010) ? 30 : // slt
+                                          (func3 == 3'b011) ? 31 : // sltu
+                                          (func3 == 3'b100) ? 32 : // xor
                                           (func3 == 3'b101 && func7 == 0) ? 33 : // srl
                                           (func3 == 3'b101) ? 34 : // sra
-                                          (func3 == 3'b110) ? 36 :
-                                          (func3 == 3'b111) ? 37 :
+                                          (func3 == 3'b110) ? 35 : // or
+                                          (func3 == 3'b111) ? 36 : // and
                                           39) :
                  39;
+
+  assign imm = (opcode == CodeLui) ? imm_u :
+               (opcode == CodeAupic) ? (imm_u + pc) :
+               (opcode == CodeJal) ? imm_j :
+               (opcode == CodeJalr) ? imm_i :
+               (opcode == CodeBr) ? imm_b :
+               (opcode == CodeLoad) ? imm_i :
+               (opcode == CodeArithI) ? (24 <= op_type && op_type <= 26 ? imm_i_ : imm_i) :
+               (opcode == CodeStore) ? imm_s :
+               0;
 
   assign to_lsb = to_decoder && (10 <= op_type && op_type <= 17) && !lsb_full;
   assign to_rs  = to_decoder && (op_type < 10 || op_type > 17)   && !rs_full;
   assign to_rob = to_decoder && !rob_full && (to_lsb || to_rs);
   
   assign rs1 = to_lsb ? rs1_raw :
-               to_rs  ? ((3 <= op_type && op_type <= 37) ? rs1_raw : 0) :
+               to_rs  ? ((3 <= op_type && op_type <= 36) ? rs1_raw : 0) :
                0;
   assign rs2 = to_lsb ? (op_type <= 14 ? 0 : rs2_raw) :
                to_rs  ? (((4 <= op_type && op_type <= 9) 
                         || (15 <= op_type && op_type <= 17)
-                        || (27 <= op_type && op_type <= 37)) ? rs2_raw : 0) :
+                        || (27 <= op_type && op_type <= 36)) ? rs2_raw : 0) :
                0;
 
   assign j = !rs1_busy ? 1 : rob_rs1_is_ready;
@@ -166,8 +169,8 @@ module decoder(
   assign vk = !rs2_busy ? rs2_value : rob_rs2_value;
   
   assign dest = (4 <= op_type && op_type <= 9) 
-                    || (18 <= op_type && op_type <= 26) 
-                    || op_type > 37 ? 0 : rd_raw;
+                    || (15 <= op_type && op_type <= 17) 
+                    || op_type > 36 ? 0 : rd_raw;
 
   assign next_pc = to_rob ? (opcode == CodeJal  ? jal_pc : 
                              opcode == CodeJalr ? pc : 
@@ -176,7 +179,7 @@ module decoder(
                                                   pc + 4) : 
                             pc;
 
-  assign reorder_en = to_decoder && dest != 0;
+  assign reorder_en = to_rob && dest != 0;
   assign reorder_reg = dest;
   assign reorder_id = rob_free_id;
 

@@ -56,7 +56,8 @@ module regfile(
         busy[reg_id] <= rob[reg_id] != rob_id;
       end
 
-      if (reorder_en && reg_id != 0) begin // reorder
+      if (reorder_en && reorder_reg != 0) begin // reorder
+        // $display("reorder reg %d to rob# %d", reorder_reg, reorder_id);
         busy[reorder_reg] <= 1;
         rob[reorder_reg] <= reorder_id;
       end

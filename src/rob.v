@@ -42,6 +42,7 @@ module rob(
   input wire rs_to_rob,
   input wire [31:0] rs_value,
   input wire [`REG_ID_BIT-1:0] rs_dest,
+  input wire [31:0] jalr_pc,
   input wire lb_to_rob,
   input wire [31:0] lb_value,
   input wire [`REG_ID_BIT-1:0] lb_dest,
@@ -49,6 +50,7 @@ module rob(
   input wire [`REG_ID_BIT-1:0] sb_dest,
 
   // to regfile
+  output reg write_en,
   output reg [`REG_ID_BIT-1:0] reg_id,
   output reg [`ROB_WIDTH_BIT-1:0] rob_id,
   output reg [31:0] value_out,
@@ -88,24 +90,27 @@ module rob(
       for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
         busy[i] <= 0;
       end
+
+      HALT = 0;
     end else if (!rdy_in) begin
       // pause
     end else begin
-      if (state[head] == 1) begin // in execute state
+      write_en <= 0;
+      if (busy[head] && state[head] == 1) begin // in execute state
         flag = 0;
         if (op[head] == 39) begin // exit
           // todo: HALT
-          HALT <= 1;
+          HALT = 1;
         end
         if (op[head] == 3) begin // jalr
           // decoder stall false
           // pc_next <= buffer[head].PC (borrowed here)
           jalr_finish <= 1;
-          pc_next <= addr[head];
+          pc_next <= jalr_pc;
         end else begin
           jalr_finish <= 0;
         end
-        if (4 <= op[head] && op[head] <= 7) begin // branch
+        if (4 <= op[head] && op[head] <= 9) begin // branch
           branch_finish <= 1;
           if (value[head] != {31'b0, guessed[head]}) begin
             pc_next <= addr[head] + (value[head] == 1 ? imm_[head] : 4);
@@ -130,10 +135,12 @@ module rob(
           tail <= 0;
 
           clear_all <= 1;
-          jalr_finish <= 1; // quit stall?
+          jalr_finish <= 0; // quit stall?
         end else begin
           clear_all <= 0;
 
+          // write back
+          write_en <= 1;
           reg_id <= dest[head];
           rob_id <= head;
           value_out <= value[head];
@@ -142,6 +149,7 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
+        // $display("[commit] rob#: %d addr: %h, value: %h", head, addr[head], value[head]);
         // free reg
         // store to memory if needed
       end else begin
@@ -150,9 +158,9 @@ module rob(
       end
       
       if (to_rob) begin
-        $display("current rob head: %d, tail: %d", head, tail);
+        // $display("current rob head: %d, tail: %d", head, tail);
         for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
-          $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
+          // $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
         end
         busy[tail] <= 1;
         op[tail] <= op_type;
@@ -162,23 +170,23 @@ module rob(
         imm_[tail] <= imm;
         addr[tail] <= inst_pc;
         guessed[tail] <= predictor_result;
-        $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
+        // $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
         tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
       end
 
       // listen
       if (rs_to_rob) begin
-        $display("rob# %d got %d from rs", rs_dest, rs_value);
+        // $display("rob# %d got %d from rs", rs_dest, rs_value);
         state[rs_dest] <= 1; // excute
         value[rs_dest] <= rs_value;
       end
       if (lb_to_rob) begin
-        $display("rob# %d got %d from lb", lb_dest, lb_value);
+        // $display("rob# %d got %d from lb", lb_dest, lb_value);
         state[lb_dest] <= 1; // excute
         value[lb_dest] <= lb_value;
       end
       if (sb_to_rob) begin
-        $display("rob# %d finished by sb", sb_dest);
+        // $display("rob# %d finished by sb", sb_dest);
         state[sb_dest] <= 1; // excute
       end
     end

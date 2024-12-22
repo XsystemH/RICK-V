@@ -80,9 +80,9 @@ module lsb(
       // pause
     end else begin
       if (task_in) begin
-        $display("current lsb head: %d, tail: %d", head, tail);
+        // $display("current lsb head: %d, tail: %d", head, tail);
         for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
-          $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
+          // $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
         end
         // store to LSB
         busy[tail] <= 1;
@@ -97,7 +97,7 @@ module lsb(
         inst_pc[tail] <= inst_pc_in;
         rob_id[tail] <= dest_in;
         tail <= (tail + 1 == `LSB_WIDTH) ? 0 : tail + 1;
-        $display("LSB got: head: %d, tail: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", head, tail, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc_in, dest_in);
+        // $display("LSB got: head: %d, tail: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", head, tail, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc_in, dest_in);
       end
 
       if (!empty && j[head] && k[head]) begin // boardcast all the time
@@ -114,7 +114,7 @@ module lsb(
           last_dest <= rob_id[head];
         end else if (15 <= op[head] && op[head] <= 17) begin
           // store should be done when at the top of ROB
-          $display("Why don't you work? lsb! rob_id[%d]: %d, rob_head: %d", head, rob_id[head], rob_head);
+          // $display("Why don't you work? los: %d, addr: %h, value: %d", l_or_s, address, value_store);
           go_work <= rob_head == rob_id[head] ? 1 : 0;
           l_or_s <= 1;
           address <= vj[head] + imm[head];
@@ -129,7 +129,7 @@ module lsb(
         end
       end
       if (go_work && received) begin // head + 1 when memctrl received
-        $display("lsb: I'm working! id: %d, op: %d, rob#: %d", head, op[head], rob_id[head]);
+        // $display("lsb: I'm working! id: %d, op: %d, rob#: %d", head, op[head], rob_id[head]);
         go_work <= 0;
         
         last_op <= op[head];

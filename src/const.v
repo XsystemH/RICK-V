@@ -4,7 +4,7 @@
   lb, lh, lw, lbu, lhu, 10 - 14
   sb, sh, sw, 15 - 17
   addi, slti, sltiu, xori, ori, andi, slli, srli, srai, 18 - 26
-  add, sub, sll, slt, sltu, xor_, srl, sra, or_, and_, 27 - 37
+  add, sub, sll, slt, sltu, xor_, srl, sra, or_, and_, 27 - 36
   exit, empty 38 - 39
 
   64 = 2^6 6 Bits for OP_Type

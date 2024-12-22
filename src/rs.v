@@ -82,7 +82,7 @@ module rs(
         imm[id] <= imm_in;
         addr[id] <= inst_pc;
         dest[id] <= dest_in;
-        $display("RS got: id: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", id, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc, dest_in);
+        // $display("RS got: id: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", id, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc, dest_in);
       end
       // execute
       if (size != 0) begin
@@ -109,10 +109,10 @@ module rs(
               value_temp = imm[id];
             end
             2: begin // jal: jumping to PC when decoding PC
-              value_temp = imm[id];
+              value_temp = addr[id] + 4;
             end
             3: begin // jalr: jumping to PC when decoding PC
-              value_temp = imm[id];
+              value_temp = addr[id] + 4;
               new_PC <= vj[id] + imm[id];
             end
             4: begin // beq
