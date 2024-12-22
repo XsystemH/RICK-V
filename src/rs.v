@@ -20,6 +20,8 @@ module rs(
   input wire [31:0] imm_in,
   input wire [31:0] inst_pc,
 
+  // from ROB
+  input wire clear_all,
   // to ROB
   output reg rs_to_rob,
   output reg [31:0] value,
@@ -225,6 +227,13 @@ module rs(
               vk[i] <= lsb_value;
             end
           end
+        end
+      end
+
+      if (clear_all) begin
+        size <= 0;
+        for (i = 0; i < `RS_WIDTH; i = i + 1) begin
+          busy[i] <= 0;
         end
       end
     end

@@ -82,6 +82,7 @@ module rob(
 
   integer flag = 0;
   integer i = 0;
+  integer t = 0;
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
@@ -96,6 +97,7 @@ module rob(
       // pause
     end else begin
       write_en <= 0;
+      clear_all = 0;
       if (busy[head] && state[head] == 1) begin // in execute state
         flag = 0;
         if (op[head] == 39) begin // exit
@@ -134,10 +136,9 @@ module rob(
           head <= 0;
           tail <= 0;
 
-          clear_all <= 1;
-          jalr_finish <= 0; // quit stall?
+          clear_all = 1;
         end else begin
-          clear_all <= 0;
+          clear_all = 0;
 
           // write back
           write_en <= 1;
@@ -149,7 +150,8 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
-        // $display("[commit] rob#: %d addr: %h, value: %h", head, addr[head], value[head]);
+        $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
+        t = t + 1;
         // free reg
         // store to memory if needed
       end else begin
@@ -158,9 +160,9 @@ module rob(
       end
       
       if (to_rob) begin
-        // $display("current rob head: %d, tail: %d", head, tail);
+        $display("ROB--------------------------------");
         for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
-          // $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
+          $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
         end
         busy[tail] <= 1;
         op[tail] <= op_type;
@@ -170,7 +172,7 @@ module rob(
         imm_[tail] <= imm;
         addr[tail] <= inst_pc;
         guessed[tail] <= predictor_result;
-        // $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
+        $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
         tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
       end
 

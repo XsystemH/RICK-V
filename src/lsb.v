@@ -32,6 +32,7 @@ module lsb(
 
   // from ROB
   input wire [`ROB_WIDTH_BIT-1:0] rob_head,
+  input wire clear_all,
 
   // to CDB
   output reg lb_to_rob,
@@ -59,8 +60,8 @@ module lsb(
   reg [5:0] last_op;
   reg [`REG_ID_BIT-1:0] last_dest;
   
-  wire full = head == tail && busy[head];
-  wire empty = head == tail && !busy[head];
+  wire full = (head == tail) && busy[head];
+  wire empty = (head == tail) && !busy[head];
 
   assign lsb_full = full;
 
@@ -80,6 +81,7 @@ module lsb(
       // pause
     end else begin
       if (task_in) begin
+        // $display("LSB--------------------------------");
         // $display("current lsb head: %d, tail: %d", head, tail);
         for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
           // $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
@@ -138,6 +140,7 @@ module lsb(
 
         if (15 <= op[head] && op[head] <= 17) begin
           // store
+          // $display("store to rob: %d", rob_id[head]);
           sb_to_rob <= 1;
           store_id <= rob_id[head];
         end else begin
@@ -174,6 +177,14 @@ module lsb(
         end
       end else begin
         lb_to_rob <= 0;
+      end
+
+      if (clear_all) begin
+        head <= 0;
+        tail <= 0;
+        for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+          busy[i] <= 0;
+        end
       end
     end
   end

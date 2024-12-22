@@ -30,7 +30,7 @@ initial begin
   $dumpfile("test.vcd");
   $dumpvars(0, testbench);
 `endif
-  #30000 $finish;
+  #4000 $finish;
 end
 
 endmodule
