@@ -88,11 +88,6 @@ module lsb(
       // pause
     end else begin
       if (task_in) begin
-        // $display("LSB--------------------------------");
-        // $display("current lsb head: %d, tail: %d", head, tail);
-        // for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
-        //   $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
-        // end
         // store to LSB
         busy[tail] <= 1;
         op[tail] <= op_type;
@@ -110,6 +105,10 @@ module lsb(
       end
 
       if (!empty && j[head] && k[head]) begin // boardcast all the time
+        // $display("LSB--------------------------------");
+        // for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+        //   $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
+        // end
         if (10 <= op[head] && op[head] <= 14) begin
           // load
           go_work <= 1;
@@ -124,7 +123,6 @@ module lsb(
           waiting <= 1;
         end else if (15 <= op[head] && op[head] <= 17) begin
           // store should be done when at the top of ROB
-          // $display("Why don't you work? los: %d, addr: %h, value: %d", l_or_s, address, value_store);
           go_work <= rob_head == rob_id[head] ? 1 : 0;
           l_or_s <= 1;
           address <= vj[head] + imm[head];
@@ -158,40 +156,54 @@ module lsb(
       end else begin
         sb_to_rob <= 0;
       end
-      if (has_result) begin
+      if (has_result && waiting) begin
         // write back
         // lb_to_rob <= 1; (X) maybe old result which no longer needed
-        lb_to_rob <= waiting;
+        lb_to_rob <= 1;
         value <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
                  last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
                  value_load;
         load_id <= last_dest;
-
+        // $display("lsb: I got the result! id: %d, op: %d, rob#: %d value %h", head, last_op, last_dest, value_load);
         // renew lsb itself
-        if (waiting) begin
-          for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
-            if (busy[i]) begin
-              if (qj[i] == last_dest && j[i] == 0) begin
-                j[i] <= 1;
-                vj[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
-                         last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
-                         value_load;
-              end
-              if (qk[i] == last_dest && k[i] == 0) begin
-                k[i] <= 1;
-                vk[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
-                         last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
-                         value_load;
-              end
+        for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+          if (busy[i]) begin
+            if (qj[i] == last_dest && j[i] == 0) begin
+              j[i] <= 1;
+              vj[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                       last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                       value_load;
+            end
+            if (qk[i] == last_dest && k[i] == 0) begin
+              k[i] <= 1;
+              vk[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                       last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                       value_load;
             end
           end
         end
+        if (task_in) begin
+          if (qj_in == last_dest && j_in == 0) begin
+            j[tail] <= 1;
+            vj[tail] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                        last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                        value_load;
+          end
+          if (qk_in == last_dest && k_in == 0) begin
+            k[tail] <= 1;
+            vk[tail] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                        last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                        value_load;
+          end
+        end
+        
         waiting <= 0;
       end else begin
         lb_to_rob <= 0;
       end
 
       if (rs_to_rob) begin
+        // $display("rob# %d got %d from rs", rs_dest, rs_value);
         for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
           if (busy[i] && qj[i] == rs_dest && j[i] == 0) begin
             j[i] <= 1;
@@ -200,6 +212,17 @@ module lsb(
           if (busy[i] && qk[i] == rs_dest && k[i] == 0) begin
             k[i] <= 1;
             vk[i] <= rs_value;
+          end
+        end
+
+        if (task_in) begin
+          if (qj_in == rs_dest && j_in == 0) begin
+            j[tail] <= 1;
+            vj[tail] <= rs_value;
+          end
+          if (qk_in == rs_dest && k_in == 0) begin
+            k[tail] <= 1;
+            vk[tail] <= rs_value;
           end
         end
       end

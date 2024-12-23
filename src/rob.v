@@ -73,10 +73,10 @@ module rob(
   assign rob_full = (head == tail) && busy[tail];
   assign rob_free_id = tail;
 
-  assign rob_rs1_is_ready = busy[reoder_1] ? 0 : 1;
-  assign rob_rs2_is_ready = busy[reoder_2] ? 0 : 1;
-  assign rob_rs1_value = busy[reoder_1] ? 0 : value[reoder_1];
-  assign rob_rs2_value = busy[reoder_2] ? 0 : value[reoder_2];
+  assign rob_rs1_is_ready = state[reoder_1] != 0 ? 1 : 0;
+  assign rob_rs2_is_ready = state[reoder_2] != 0 ? 1 : 0;
+  assign rob_rs1_value = state[reoder_1] != 0 ? value[reoder_1] : 0;
+  assign rob_rs2_value = state[reoder_2] != 0 ? value[reoder_2] : 0;
 
   assign rob_head = head;
 

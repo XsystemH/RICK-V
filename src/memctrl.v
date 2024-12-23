@@ -89,6 +89,9 @@ module memctrl(
           width <= width_in;
           address <= lsb_address_in;
           finished = 0;
+          // if (l_or_s && lsb_address_in == 32'h00030000) begin
+          //   $display("\n[cout] ascii: %h %h %h %h", value_store[7:0], value_store[15:8], value_store[23:16], value_store[31:24]);
+          // end
           if (l_or_s) begin
             // store
             temp[0] <= value_store[7:0];
