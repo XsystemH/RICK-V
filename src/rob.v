@@ -83,6 +83,9 @@ module rob(
   integer flag = 0;
   integer i = 0;
   integer t = 0;
+
+  wire [31:0] rob_debug = t;
+  wire rob_ready_commit = busy[head] && (state[head] == 1);
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
@@ -97,8 +100,26 @@ module rob(
       // pause
     end else begin
       write_en <= 0;
-      clear_all = 0;
+      clear_all <= 0;
+      
+      if (to_rob) begin
+        busy[tail] <= 1;
+        op[tail] <= op_type;
+        state[tail] <= 0;
+        dest[tail] <= rd;
+        value[tail] <= 0;
+        imm_[tail] <= imm;
+        addr[tail] <= inst_pc;
+        guessed[tail] <= predictor_result;
+        // $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
+        tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
+      end
+
       if (busy[head] && state[head] == 1) begin // in execute state
+        // $display("ROB--------------------------------");
+        // for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
+        //   $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
+        // end
         flag = 0;
         if (op[head] == 39) begin // exit
           // todo: HALT
@@ -130,15 +151,16 @@ module rob(
         end
         if (flag == 1) begin
           // clear all the instructions
+          // $display("clear all");
           for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
             busy[i] <= 0;
           end
           head <= 0;
           tail <= 0;
 
-          clear_all = 1;
+          clear_all <= 1;
         end else begin
-          clear_all = 0;
+          clear_all <= 0;
 
           // write back
           write_en <= 1;
@@ -150,7 +172,7 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
-        $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
+        // $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
         t = t + 1;
         // free reg
         // store to memory if needed
@@ -158,26 +180,13 @@ module rob(
         jalr_finish <= 0;
         branch_finish <= 0;
       end
-      
-      if (to_rob) begin
-        $display("ROB--------------------------------");
-        for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
-          $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
-        end
-        busy[tail] <= 1;
-        op[tail] <= op_type;
-        state[tail] <= 0;
-        dest[tail] <= rd;
-        value[tail] <= 0;
-        imm_[tail] <= imm;
-        addr[tail] <= inst_pc;
-        guessed[tail] <= predictor_result;
-        $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
-        tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
-      end
 
       // listen
       if (rs_to_rob) begin
+        // $display("ROB------------------------------RS");
+        // for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
+        //   $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
+        // end
         // $display("rob# %d got %d from rs", rs_dest, rs_value);
         state[rs_dest] <= 1; // excute
         value[rs_dest] <= rs_value;
@@ -190,6 +199,14 @@ module rob(
       if (sb_to_rob) begin
         // $display("rob# %d finished by sb", sb_dest);
         state[sb_dest] <= 1; // excute
+      end
+
+      if (clear_all) begin
+        for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
+          busy[i] <= 0;
+        end
+        head <= 0;
+        tail <= 0;
       end
     end
   end

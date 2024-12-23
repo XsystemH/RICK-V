@@ -34,6 +34,10 @@ module lsb(
   input wire [`ROB_WIDTH_BIT-1:0] rob_head,
   input wire clear_all,
 
+  // from CDB
+  input wire rs_to_rob,
+  input wire [31:0] rs_value,
+  input wire [`REG_ID_BIT-1:0] rs_dest,
   // to CDB
   output reg lb_to_rob,
   output reg [`ROB_WIDTH_BIT-1:0] load_id,
@@ -59,6 +63,7 @@ module lsb(
 
   reg [5:0] last_op;
   reg [`REG_ID_BIT-1:0] last_dest;
+  reg waiting;
   
   wire full = (head == tail) && busy[head];
   wire empty = (head == tail) && !busy[head];
@@ -66,6 +71,7 @@ module lsb(
   assign lsb_full = full;
 
   integer i;
+  integer flag;
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
@@ -74,6 +80,7 @@ module lsb(
       for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
         busy[i] <= 0;
       end
+      waiting <= 0;
       go_work <= 0;
       lb_to_rob <= 0;
       sb_to_rob <= 0;
@@ -83,9 +90,9 @@ module lsb(
       if (task_in) begin
         // $display("LSB--------------------------------");
         // $display("current lsb head: %d, tail: %d", head, tail);
-        for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
-          // $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
-        end
+        // for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+        //   $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
+        // end
         // store to LSB
         busy[tail] <= 1;
         op[tail] <= op_type;
@@ -114,6 +121,7 @@ module lsb(
                    op[head] == 13 ? 1 :
                    op[head] == 14 ? 2 : 0; // no sign ext
           last_dest <= rob_id[head];
+          waiting <= 1;
         end else if (15 <= op[head] && op[head] <= 17) begin
           // store should be done when at the top of ROB
           // $display("Why don't you work? los: %d, addr: %h, value: %d", l_or_s, address, value_store);
@@ -152,31 +160,48 @@ module lsb(
       end
       if (has_result) begin
         // write back
-        lb_to_rob <= 1;
+        // lb_to_rob <= 1; (X) maybe old result which no longer needed
+        lb_to_rob <= waiting;
         value <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
                  last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
                  value_load;
         load_id <= last_dest;
 
         // renew lsb itself
-        for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
-          if (busy[i]) begin
-            if (qj[i] == last_dest && j[i] == 0) begin
-              j[i] <= 1;
-              vj[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
-                       last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
-                       value_load;
-            end
-            if (qk[i] == last_dest && k[i] == 0) begin
-              k[i] <= 1;
-              vk[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
-                       last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
-                       value_load;
+        if (waiting) begin
+          for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+            if (busy[i]) begin
+              if (qj[i] == last_dest && j[i] == 0) begin
+                j[i] <= 1;
+                vj[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                         last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                         value_load;
+              end
+              if (qk[i] == last_dest && k[i] == 0) begin
+                k[i] <= 1;
+                vk[i] <= last_op == 10 ? {{24{value_load[7]}}, value_load[7:0]} :
+                         last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
+                         value_load;
+              end
             end
           end
         end
+        waiting <= 0;
       end else begin
         lb_to_rob <= 0;
+      end
+
+      if (rs_to_rob) begin
+        for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
+          if (busy[i] && qj[i] == rs_dest && j[i] == 0) begin
+            j[i] <= 1;
+            vj[i] <= rs_value;
+          end
+          if (busy[i] && qk[i] == rs_dest && k[i] == 0) begin
+            k[i] <= 1;
+            vk[i] <= rs_value;
+          end
+        end
       end
 
       if (clear_all) begin
@@ -185,6 +210,8 @@ module lsb(
         for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
           busy[i] <= 0;
         end
+        go_work <= 0;
+        waiting <= 0;
       end
     end
   end

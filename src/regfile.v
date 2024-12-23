@@ -15,6 +15,7 @@ module regfile(
   input wire [`REG_ID_BIT-1:0] reg_id,
   input wire [`ROB_WIDTH_BIT-1:0] rob_id,
   input wire [31:0] value,
+  input wire clear_all,
 
   // with decoder
   input wire [`REG_ID_BIT-1:0] rs1,
@@ -60,6 +61,13 @@ module regfile(
         // $display("reorder reg %d to rob# %d", reorder_reg, reorder_id);
         busy[reorder_reg] <= 1;
         rob[reorder_reg] <= reorder_id;
+      end
+
+      if (clear_all) begin
+        for (i = 0; i < `REG_ID_WIDTH; i = i + 1) begin
+          busy[i] <= 0;
+          rob[i] <= 0;
+        end
       end
     end
   end

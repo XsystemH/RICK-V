@@ -165,7 +165,7 @@ module memctrl(
       end
 
       if (HALT) begin
-        $display("memctrl: HALT");
+        // $display("memctrl: HALT");
         mem_wr <= 1; // write
         mem_a <= 32'h00030004;
         mem_dout <= 8'b0;

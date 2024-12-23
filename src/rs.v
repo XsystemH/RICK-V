@@ -66,6 +66,10 @@ module rs(
       // pause
     end else begin
       if (to_rs) begin
+        // $display("RS--------------------------------");
+        // for (i = 0; i < `RS_WIDTH; i = i + 1) begin
+        //   $display("RS[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], addr[i], dest[i]);
+        // end
         id = -1;
         for (i = 0; i < `RS_WIDTH; i = i + 1) begin
           if (id == -1 && !busy[i]) begin

@@ -147,8 +147,8 @@ module decoder(
                (opcode == CodeStore) ? imm_s :
                0;
 
-  assign to_lsb = to_decoder && (10 <= op_type && op_type <= 17) && !lsb_full;
-  assign to_rs  = to_decoder && (op_type < 10 || op_type > 17)   && !rs_full;
+  assign to_lsb = to_decoder && (10 <= op_type && op_type <= 17) && !lsb_full && !rob_full;
+  assign to_rs  = to_decoder && (op_type < 10 || op_type > 17)   && !rs_full  && !rob_full;
   assign to_rob = to_decoder && !rob_full && (to_lsb || to_rs);
   
   assign rs1 = to_lsb ? rs1_raw :
