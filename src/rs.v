@@ -51,7 +51,7 @@ module rs(
   assign rs_full = size == `RS_WIDTH;
 
   integer i,ii;
-  integer id;
+  integer id_in,id_out;
   integer flag;
   integer value_temp;
   always @(posedge clk_in) begin
@@ -70,131 +70,142 @@ module rs(
         // for (i = 0; i < `RS_WIDTH; i = i + 1) begin
         //   $display("RS[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], addr[i], dest[i]);
         // end
-        id = -1;
+        id_in = -1;
         for (i = 0; i < `RS_WIDTH; i = i + 1) begin
-          if (id == -1 && !busy[i]) begin
-            id = i;
+          if (id_in == -1 && !busy[i]) begin
+            id_in = i;
           end
         end // for
-        busy[id] <= 1;
+        busy[id_in] <= 1;
         size <= size + 1;
-        op[id] <= op_type;
-        vj[id] <= vj_in;
-        vk[id] <= vk_in;
-        qj[id] <= qj_in;
-        qk[id] <= qk_in;
-        j[id] <= j_in;
-        k[id] <= k_in;
-        imm[id] <= imm_in;
-        addr[id] <= inst_pc;
-        dest[id] <= dest_in;
+        op[id_in] <= op_type;
+        vj[id_in] <= vj_in;
+        vk[id_in] <= vk_in;
+        qj[id_in] <= qj_in;
+        qk[id_in] <= qk_in;
+        j[id_in] <= j_in;
+        k[id_in] <= k_in;
+        imm[id_in] <= imm_in;
+        addr[id_in] <= inst_pc;
+        dest[id_in] <= dest_in;
+
+        if (lsb_to_rs) begin
+          if (qj_in == lsb_rob_id && j_in == 0) begin
+            j[id_in] <= 1;
+            vj[id_in] <= lsb_value;
+          end
+          if (qk_in == lsb_rob_id && k_in == 0) begin
+            k[id_in] <= 1;
+            vk[id_in] <= lsb_value;
+          end
+        end
         // $display("RS got: id: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", id, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc, dest_in);
       end
       // execute
       if (size != 0) begin
         flag = 0;
-        id = -1;
+        id_out = -1;
         for (i = 0; i < `RS_WIDTH; i = i + 1) begin
-          if (id == -1 && busy[i] && j[i] && k[i]) begin
+          if (id_out == -1 && busy[i] && j[i] && k[i]) begin
             flag = 1;
-            id = i;
+            id_out = i;
           end
         end
         if (flag == 1) begin
-          busy[id] <= 0;
+          busy[id_out] <= 0;
           size <= size - 1;
           rs_to_rob <= 1;
 
           // 不想写ALU了 太难受了
-          dest_out <= dest[id];
-          case (op[id])
+          dest_out <= dest[id_out];
+          case (op[id_out])
             0: begin // lui
-              value_temp = imm[id];
+              value_temp = imm[id_out];
             end
             1: begin // auipc
-              value_temp = imm[id];
+              value_temp = imm[id_out];
             end
             2: begin // jal: jumping to PC when decoding PC
-              value_temp = addr[id] + 4;
+              value_temp = addr[id_out] + 4;
             end
             3: begin // jalr: jumping to PC when decoding PC
-              value_temp = addr[id] + 4;
-              new_PC <= vj[id] + imm[id];
+              value_temp = addr[id_out] + 4;
+              new_PC <= vj[id_out] + imm[id_out];
             end
             4: begin // beq
-              value_temp = vj[id] == vk[id] ? 1 : 0;
+              value_temp = vj[id_out] == vk[id_out] ? 1 : 0;
             end
             5: begin // bne
-              value_temp = vj[id] != vk[id] ? 1 : 0;
+              value_temp = vj[id_out] != vk[id_out] ? 1 : 0;
             end
             6: begin // blt
-              value_temp = $signed(vj[id]) < $signed(vk[id]) ? 1 : 0;
+              value_temp = $signed(vj[id_out]) < $signed(vk[id_out]) ? 1 : 0;
             end
             7: begin // bge
-              value_temp = $signed(vj[id]) >= $signed(vk[id]) ? 1 : 0;
+              value_temp = $signed(vj[id_out]) >= $signed(vk[id_out]) ? 1 : 0;
             end
             8: begin // bltu
-              value_temp = vj[id] < vk[id] ? 1 : 0;
+              value_temp = vj[id_out] < vk[id_out] ? 1 : 0;
             end
             9: begin // bgeu
-              value_temp = vj[id] >= vk[id] ? 1 : 0;
+              value_temp = vj[id_out] >= vk[id_out] ? 1 : 0;
             end
             18: begin // addi
-              value_temp = vj[id] + imm[id];
+              value_temp = vj[id_out] + imm[id_out];
             end
             19: begin // slti
-              value_temp = $signed(vj[id]) < $signed(imm[id]) ? 1 : 0;
+              value_temp = $signed(vj[id_out]) < $signed(imm[id_out]) ? 1 : 0;
             end
             20: begin // sltiu
-              value_temp = vj[id] < imm[id] ? 1 : 0;
+              value_temp = vj[id_out] < imm[id_out] ? 1 : 0;
             end
             21: begin // xori
-              value_temp = vj[id] ^ imm[id];
+              value_temp = vj[id_out] ^ imm[id_out];
             end
             22: begin // ori
-              value_temp = vj[id] | imm[id];
+              value_temp = vj[id_out] | imm[id_out];
             end
             23: begin // andi
-              value_temp = vj[id] & imm[id];
+              value_temp = vj[id_out] & imm[id_out];
             end
             24: begin // slli
-              value_temp = vj[id] << imm[id];
+              value_temp = vj[id_out] << imm[id_out];
             end
             25: begin // srli
-              value_temp = vj[id] >> imm[id];
+              value_temp = vj[id_out] >> imm[id_out];
             end
             26: begin // srai
-              value_temp = $signed(vj[id]) >>> imm[id];
+              value_temp = $signed(vj[id_out]) >>> imm[id_out];
             end
             27: begin // add
-              value_temp = vj[id] + vk[id];
+              value_temp = vj[id_out] + vk[id_out];
             end
             28: begin // sub
-              value_temp = $signed(vj[id]) - $signed(vk[id]);
+              value_temp = $signed(vj[id_out]) - $signed(vk[id_out]);
             end
             29: begin // sll
-              value_temp = vj[id] << (vk[id] & 32'h1f);
+              value_temp = vj[id_out] << (vk[id_out] & 32'h1f);
             end
             30: begin // slt
-              value_temp = $signed(vj[id]) < $signed(vk[id]) ? 1 : 0;
+              value_temp = $signed(vj[id_out]) < $signed(vk[id_out]) ? 1 : 0;
             end
             31: begin // sltu
-              value_temp = vj[id] < vk[id] ? 1 : 0;
+              value_temp = vj[id_out] < vk[id_out] ? 1 : 0;
             end
             32: begin // xor
-              value_temp = vj[id] ^ vk[id];
+              value_temp = vj[id_out] ^ vk[id_out];
             end
             33: begin // srl
-              value_temp = vj[id] >> (vk[id] & 32'h1f);
+              value_temp = vj[id_out] >> (vk[id_out] & 32'h1f);
             end
             34: begin // sra
-              value_temp = $signed(vj[id]) >>> (vk[id] & 32'h1f);
+              value_temp = $signed(vj[id_out]) >>> (vk[id_out] & 32'h1f);
             end
             35: begin // or
-              value_temp = vj[id] | vk[id];
+              value_temp = vj[id_out] | vk[id_out];
             end
             36: begin // and
-              value_temp = vj[id] & vk[id];
+              value_temp = vj[id_out] & vk[id_out];
             end
           endcase
           value <= value_temp;
@@ -202,14 +213,25 @@ module rs(
           // renew RS
           for (ii = 0; ii < `RS_WIDTH; ii = ii + 1) begin
             if (busy[ii]) begin
-              if (qj[ii] == dest[id] && j[ii] == 0) begin
+              if (qj[ii] == dest[id_out] && j[ii] == 0) begin
                 j[ii] <= 1;
                 vj[ii] <= value_temp;
               end
-              if (qk[ii] == dest[id] && k[ii] == 0) begin
+              if (qk[ii] == dest[id_out] && k[ii] == 0) begin
                 k[ii] <= 1;
                 vk[ii] <= value_temp;
               end
+            end
+          end
+
+          if (to_rs) begin
+            if (qj_in == dest[id_out] && j_in == 0) begin
+              j[id_in] <= 1;
+              vj[id_in] <= value_temp;
+            end
+            if (qk_in == dest[id_out] && k_in == 0) begin
+              k[id_in] <= 1;
+              vk[id_in] <= value_temp;
             end
           end
         end else begin

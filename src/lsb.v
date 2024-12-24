@@ -101,14 +101,14 @@ module lsb(
         inst_pc[tail] <= inst_pc_in;
         rob_id[tail] <= dest_in;
         tail <= (tail + 1 == `LSB_WIDTH) ? 0 : tail + 1;
-        // $display("LSB got: head: %d, tail: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", head, tail, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc_in, dest_in);
-      end
-
-      if (!empty && j[head] && k[head]) begin // boardcast all the time
         // $display("LSB--------------------------------");
         // for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
         //   $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
         // end
+        // $display("LSB got: head: %d, tail: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", head, tail, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc_in, dest_in);
+      end
+
+      if (!empty && j[head] && k[head]) begin // boardcast all the time
         if (10 <= op[head] && op[head] <= 14) begin
           // load
           go_work <= 1;
@@ -149,6 +149,7 @@ module lsb(
           // $display("store to rob: %d", rob_id[head]);
           sb_to_rob <= 1;
           store_id <= rob_id[head];
+          value <= value_store;
         end else begin
           sb_to_rob <= 0;
         end
@@ -196,7 +197,7 @@ module lsb(
                         value_load;
           end
         end
-        
+
         waiting <= 0;
       end else begin
         lb_to_rob <= 0;
@@ -225,6 +226,18 @@ module lsb(
             vk[tail] <= rs_value;
           end
         end
+      end
+
+      if (lb_to_rob && task_in) begin
+        // $display("lsb got %d from lb", value);
+        if (qj_in == load_id && j_in == 0) begin
+            j[tail] <= 1;
+            vj[tail] <= value;
+          end
+          if (qk_in == load_id && k_in == 0) begin
+            k[tail] <= 1;
+            vk[tail] <= value;
+          end
       end
 
       if (clear_all) begin

@@ -127,7 +127,6 @@ module rob(
         end
         if (op[head] == 3) begin // jalr
           // decoder stall false
-          // pc_next <= buffer[head].PC (borrowed here)
           jalr_finish <= 1;
           pc_next <= jalr_pc;
         end else begin
@@ -183,10 +182,6 @@ module rob(
 
       // listen
       if (rs_to_rob) begin
-        // $display("ROB------------------------------RS");
-        // for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
-        //   $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
-        // end
         // $display("rob# %d got %d from rs", rs_dest, rs_value);
         state[rs_dest] <= 1; // excute
         value[rs_dest] <= rs_value;
@@ -199,6 +194,7 @@ module rob(
       if (sb_to_rob) begin
         // $display("rob# %d finished by sb", sb_dest);
         state[sb_dest] <= 1; // excute
+        value[sb_dest] <= lb_value; // just for debug
       end
 
       if (clear_all) begin

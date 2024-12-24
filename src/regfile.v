@@ -45,28 +45,28 @@ module regfile(
     if (rst_in) begin
       // reset
       for (i = 0; i < `REG_ID_WIDTH; i = i + 1) begin
-        busy[i] = 0;
-        regs[i] = 0;
-        rob[i] = 0;
+        busy[i] <= 0;
+        regs[i] <= 0;
+        rob[i] <= 0;
       end
     end else if (!rdy_in) begin
       // pause
     end else begin
       if (write_en && reg_id != 0) begin // write
-        regs[reg_id] = value;
-        busy[reg_id] = rob[reg_id] != rob_id;
+        regs[reg_id] <= value;
+        busy[reg_id] <= rob[reg_id] != rob_id;
       end
 
       if (reorder_en && reorder_reg != 0) begin // reorder
         // $display("reorder reg %d to rob# %d", reorder_reg, reorder_id);
-        busy[reorder_reg] = 1;
-        rob[reorder_reg] = reorder_id;
+        busy[reorder_reg] <= 1;
+        rob[reorder_reg] <= reorder_id;
       end
 
       if (clear_all) begin
         for (i = 0; i < `REG_ID_WIDTH; i = i + 1) begin
-          busy[i] = 0;
-          rob[i] = 0;
+          busy[i] <= 0;
+          rob[i] <= 0;
         end
       end
     end
