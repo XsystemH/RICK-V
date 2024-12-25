@@ -156,9 +156,9 @@ module lsb(
       end else begin
         sb_to_rob <= 0;
       end
-      if (has_result && !waiting) begin
-        $display("useless result");
-      end
+      // if (has_result && !waiting) begin
+      //   $display("useless result");
+      // end
       if (has_result && waiting) begin
         // write back
         // lb_to_rob <= 1; (X) maybe old result which no longer needed
