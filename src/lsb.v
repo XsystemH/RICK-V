@@ -74,7 +74,7 @@ module lsb(
   integer flag;
   always @(posedge clk_in) begin
     if (rst_in) begin
-      // reset
+      // reset 
       head <= 0;
       tail <= 0;
       for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
@@ -119,7 +119,6 @@ module lsb(
                    op[head] == 12 ? 4 :
                    op[head] == 13 ? 1 :
                    op[head] == 14 ? 2 : 0; // no sign ext
-          last_dest <= rob_id[head];
           waiting <= 1;
         end else if (15 <= op[head] && op[head] <= 17) begin
           // store should be done when at the top of ROB
@@ -137,7 +136,7 @@ module lsb(
         end
       end
       if (go_work && received) begin // head + 1 when memctrl received
-        // $display("lsb: I'm working! id: %d, op: %d, rob#: %d", head, op[head], rob_id[head]);
+        // $display("lsb: quest received! id: %d, op: %d, addr: %h rob#: %d", head, op[head], address, rob_id[head]);
         go_work <= 0;
         
         last_op <= op[head];
@@ -156,6 +155,9 @@ module lsb(
         head <= (head + 1 == `LSB_WIDTH) ? 0 : head + 1;
       end else begin
         sb_to_rob <= 0;
+      end
+      if (has_result && !waiting) begin
+        $display("useless result");
       end
       if (has_result && waiting) begin
         // write back

@@ -103,6 +103,10 @@ module rob(
       clear_all <= 0;
       
       if (to_rob) begin
+        // $display("ROB--------------------------------");
+        // for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
+        //   $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
+        // end
         busy[tail] <= 1;
         op[tail] <= op_type;
         state[tail] <= 0;
@@ -116,10 +120,6 @@ module rob(
       end
 
       if (busy[head] && state[head] == 1) begin // in execute state
-        // $display("ROB--------------------------------");
-        // for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
-        //   $display("id: %d busy: %d state: %d op: %d dest: %d value: %d imm_: %d addr: %h", i, busy[i], state[i], op[i], dest[i], value[i], imm_[i], addr[i]);
-        // end
         flag = 0;
         if (op[head] == 39) begin // exit
           // todo: HALT
