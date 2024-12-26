@@ -1,5 +1,5 @@
 module predictor #(
-  parameter PREDICTOR_WIDTH = 4,
+  parameter PREDICTOR_WIDTH = 5,
   parameter PREDICTOR_SIZE = 1 << PREDICTOR_WIDTH
 ) (
   input wire clk,

@@ -1,7 +1,5 @@
-// 由于mem的数据每周期返回[7:0]，所以没必要这么复杂
-
 module icache#(
-  parameter CACHE_WIDTH = 4,
+  parameter CACHE_WIDTH = 5,
   parameter CACHE_SIZE = 1 << CACHE_WIDTH
 )(
   input wire clk,
@@ -38,6 +36,8 @@ module icache#(
       state <= 0;
       for (i = 0; i < CACHE_SIZE; i = i + 1) begin
         valid[i] <= 0;
+        cache_block[i] <= 0;
+        cache_block_addr[i] <= 0;
       end
     end else if (!rdy) begin
       // pause
@@ -45,7 +45,7 @@ module icache#(
       if (state == 0) begin // IDLE
         if (to_icache) begin
           if (valid[block_index] && cache_block_addr[block_index] == head_addr &&
-              valid[block_index + 1] && cache_block_addr[block_index] == head_addr + 2) begin
+              valid[block_index + 1] && cache_block_addr[block_index + 1] == head_addr + 2) begin
             // hit
             // $display("\nat pc %h, icache hit", pc);
             inst <= {cache_block[block_index + 1], cache_block[block_index]};
@@ -54,7 +54,7 @@ module icache#(
             // miss
             // $display("\nat pc %h, icache miss", pc);
             icache_to_memctrl <= 1;
-            address <= head_addr;
+            address <= (valid[block_index] && cache_block_addr[block_index] == head_addr) ? head_addr + 2 : head_addr;
             state <= 1;
 
             have_result <= 0;
@@ -69,14 +69,26 @@ module icache#(
         end
         if (memctrl_to_icache) begin
           icache_to_memctrl <= 0;
-          cache_block[block_index] <= inst_in[15:0];
-          cache_block_addr[block_index] <= head_addr;
-          valid[block_index] <= 1;
-          cache_block[block_index + 1] <= inst_in[31:16];
-          cache_block_addr[block_index + 1] <= head_addr + 2;
-          valid[block_index + 1] <= 1;
+          if (address == head_addr) begin
+            cache_block[block_index] <= inst_in[15:0];
+            cache_block_addr[block_index] <= head_addr;
+            valid[block_index] <= 1;
+            cache_block[block_index + 1] <= inst_in[31:16];
+            cache_block_addr[block_index + 1] <= head_addr + 2;
+            valid[block_index + 1] <= 1;
+
+            inst <= inst_in;
+          end else begin
+            cache_block[block_index + 1] <= inst_in[15:0];
+            cache_block_addr[block_index + 1] <= head_addr + 2;
+            valid[block_index + 1] <= 1;
+            cache_block[block_index + 2] <= inst_in[31:16];
+            cache_block_addr[block_index + 2] <= head_addr + 4;
+            valid[block_index + 2] <= 1;
+
+            inst <= {inst_in[15:0], cache_block[block_index]};
+          end
           have_result <= 1;
-          inst <= inst_in;
           state <= 0;
         end else begin
           have_result <= 0;
