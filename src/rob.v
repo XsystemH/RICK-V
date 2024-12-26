@@ -174,7 +174,7 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
-        // $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
+        $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
         t = t + 1;
         // free reg
         // store to memory if needed
