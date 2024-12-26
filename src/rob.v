@@ -15,6 +15,7 @@ module rob(
   input wire [31:0] imm,
   input wire [31:0] inst_pc,
   input wire predictor_result,
+  input wire is_c_inst,
   // to Decoder
   output wire rob_full,
   output wire [`ROB_WIDTH_BIT-1:0] rob_free_id,
@@ -66,6 +67,7 @@ module rob(
   reg [31:0] imm_ [`ROB_WIDTH-1:0];
   reg [31:0] addr [`ROB_WIDTH-1:0]; // for branch guessing
   reg guessed [`ROB_WIDTH-1:0];
+  reg is_c [`ROB_WIDTH-1:0];
 
   reg [`ROB_WIDTH_BIT-1:0] head;
   reg [`ROB_WIDTH_BIT-1:0] tail;
@@ -115,6 +117,7 @@ module rob(
         imm_[tail] <= imm;
         addr[tail] <= inst_pc;
         guessed[tail] <= predictor_result;
+        is_c[tail] <= is_c_inst;
         // $display("ROB got: head: %d tail: %d op: %d dest: %d imm_: %d addr: %h", head, tail, op_type, rd, imm, inst_pc);
         tail <= tail + 1 == `ROB_WIDTH ? 0 : tail + 1;
       end
@@ -135,7 +138,7 @@ module rob(
         if (4 <= op[head] && op[head] <= 9) begin // branch
           branch_finish <= 1;
           if (value[head] != {31'b0, guessed[head]}) begin
-            pc_next <= addr[head] + (value[head] == 1 ? imm_[head] : 4);
+            pc_next <= addr[head] + (value[head] == 1 ? imm_[head] : (is_c[head] ? 2 : 4));
             flag = 1;
             pc_branch <= addr[head];
             pre <= guessed[head];

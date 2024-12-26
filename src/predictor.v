@@ -1,5 +1,5 @@
 module predictor #(
-  parameter PREDICTOR_WIDTH = 3,
+  parameter PREDICTOR_WIDTH = 4,
   parameter PREDICTOR_SIZE = 1 << PREDICTOR_WIDTH
 ) (
   input wire clk,
@@ -28,22 +28,22 @@ module predictor #(
       // pause
     end else begin
       if (query) begin
-        predict_result <= predictors[query_pc[PREDICTOR_WIDTH+1:2]] >= 2'b10;
+        predict_result <= predictors[query_pc[PREDICTOR_WIDTH:1]] >= 2'b10;
       end
       if (update) begin
         if (update_result) begin // 1: taken
-          case (predictors[update_pc[PREDICTOR_WIDTH+1:2]])
-            2'b00: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b01;
-            2'b01: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b10;
-            2'b10: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b11;
-            2'b11: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b11;
+          case (predictors[update_pc[PREDICTOR_WIDTH:1]])
+            2'b00: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b01;
+            2'b01: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b10;
+            2'b10: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b11;
+            2'b11: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b11;
           endcase
         end else begin // 0: not taken
-          case (predictors[update_pc[PREDICTOR_WIDTH+1:2]])
-            2'b00: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b00;
-            2'b01: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b00;
-            2'b10: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b01;
-            2'b11: predictors[update_pc[PREDICTOR_WIDTH+1:2]] <= 2'b10;
+          case (predictors[update_pc[PREDICTOR_WIDTH:1]])
+            2'b00: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b00;
+            2'b01: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b00;
+            2'b10: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b01;
+            2'b11: predictors[update_pc[PREDICTOR_WIDTH:1]] <= 2'b10;
           endcase
         end
       end

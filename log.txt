@@ -1,2 +1,4 @@
 cd /home/xhsystem/Code/RICK-V/testspace && ./test
-VCD info: dumpfile test.vcd opened for output.
+VCD info: dumpfile dump.vcd opened for output.
+0000
+1234IO:Return

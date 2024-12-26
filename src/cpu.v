@@ -65,6 +65,7 @@ wire                      	rob_guess;
 wire                      	to_rs;
 wire                      	to_lsb;
 wire [31:0]              	  next_pc;
+wire                    	  is_c_inst;
 wire                      	reorder_en;
 wire [`REG_ID_BIT-1:0]    	reorder_reg;
 wire [`ROB_WIDTH_BIT-1:0] 	reorder_id;
@@ -242,6 +243,7 @@ decoder u_decoder(
   .to_rs            	( to_rs             ),
   .lsb_full         	( lsb_full          ),
   .to_lsb           	( to_lsb            ),
+  .is_c               ( is_c_inst         ),
   .reorder_en       	( reorder_en        ),
   .reorder_reg      	( reorder_reg       ),
   .reorder_id       	( reorder_id        )
@@ -260,6 +262,7 @@ rob u_rob(
   .imm              	( imm               ),
   .inst_pc          	( inst_pc           ),
   .predictor_result 	( predictor_result  ),
+  .is_c_inst        	( is_c_inst         ),
   .rob_full         	( rob_full          ),
   .rob_free_id      	( rob_free_id       ),
   .reoder_1         	( rs1_re            ),
@@ -330,6 +333,7 @@ rs u_rs(
   .dest_in    	( reorder_id  ),
   .imm_in     	( imm         ),
   .inst_pc    	( inst_pc     ),
+  .is_c_inst  	( is_c_inst   ),
   .clear_all  	( clear_all   ),
   .rs_to_rob 	  ( rs_to_rob   ),
   .value      	( rs_value    ),

@@ -1,7 +1,7 @@
 // 由于mem的数据每周期返回[7:0]，所以没必要这么复杂
 
 module icache#(
-  parameter CACHE_WIDTH = 3,
+  parameter CACHE_WIDTH = 4,
   parameter CACHE_SIZE = 1 << CACHE_WIDTH
 )(
   input wire clk,
@@ -26,8 +26,8 @@ module icache#(
 
   reg state; // 0 IDEL 1 WAITING
   reg valid[CACHE_SIZE-1:0];
-  reg [31:0] cache_block_addr[CACHE_SIZE-1:0];
-  reg [31:0] cache_block[CACHE_SIZE-1:0];
+  reg [31:0] cache_block_addr [CACHE_SIZE-1:0];
+  reg [15:0] cache_block [CACHE_SIZE-1:0];
 
   wire [CACHE_WIDTH-1:0] block_index = pc[CACHE_WIDTH:1];
   wire [31:0] head_addr = {pc[31:1], 1'b0};
@@ -44,10 +44,11 @@ module icache#(
     end else begin
       if (state == 0) begin // IDLE
         if (to_icache) begin
-          if (valid[block_index] && cache_block_addr[block_index] == head_addr) begin
+          if (valid[block_index] && cache_block_addr[block_index] == head_addr &&
+              valid[block_index + 1] && cache_block_addr[block_index] == head_addr + 2) begin
             // hit
             // $display("\nat pc %h, icache hit", pc);
-            inst <= cache_block[block_index];
+            inst <= {cache_block[block_index + 1], cache_block[block_index]};
             have_result <= 1;
           end else begin
             // miss
@@ -68,9 +69,12 @@ module icache#(
         end
         if (memctrl_to_icache) begin
           icache_to_memctrl <= 0;
-          cache_block[block_index] <= inst_in;
+          cache_block[block_index] <= inst_in[15:0];
           cache_block_addr[block_index] <= head_addr;
           valid[block_index] <= 1;
+          cache_block[block_index + 1] <= inst_in[31:16];
+          cache_block_addr[block_index + 1] <= head_addr + 2;
+          valid[block_index + 1] <= 1;
           have_result <= 1;
           inst <= inst_in;
           state <= 0;

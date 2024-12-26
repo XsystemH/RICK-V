@@ -19,6 +19,7 @@ module rs(
   input wire [`REG_ID_BIT-1:0] dest_in,
   input wire [31:0] imm_in,
   input wire [31:0] inst_pc,
+  input wire is_c_inst,
 
   // from ROB
   input wire clear_all,
@@ -47,6 +48,7 @@ module rs(
   reg [31:0] imm [`RS_WIDTH-1:0];
   reg [31:0] addr [`RS_WIDTH-1:0];
   reg [`REG_ID_BIT-1:0] dest [`RS_WIDTH-1:0];
+  reg is_c [`RS_WIDTH-1:0];
 
   assign rs_full = size == `RS_WIDTH;
 
@@ -88,6 +90,7 @@ module rs(
         imm[id_in] <= imm_in;
         addr[id_in] <= inst_pc;
         dest[id_in] <= dest_in;
+        is_c[id_in] <= is_c_inst;
 
         if (lsb_to_rs) begin
           if (qj_in == lsb_rob_id && j_in == 0) begin
@@ -126,10 +129,10 @@ module rs(
               value_temp = imm[id_out];
             end
             2: begin // jal: jumping to PC when decoding PC
-              value_temp = addr[id_out] + 4;
+              value_temp = addr[id_out] + (is_c[id_out] ? 2 : 4);
             end
             3: begin // jalr: jumping to PC when decoding PC
-              value_temp = addr[id_out] + 4;
+              value_temp = addr[id_out] + (is_c[id_out] ? 2 : 4);
               new_PC <= vj[id_out] + imm[id_out];
             end
             4: begin // beq

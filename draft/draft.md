@@ -184,3 +184,120 @@ case(opcode)
 ```
 
 ![alt text](image.png)
+
+``` verilog
+always @(*) begin
+    // 默认值
+    is_c_inst = 1'b0;
+    i_inst = 32'b0;
+
+    case (opcode)
+      2'b00: begin
+        case (funct3)
+          3'b000: begin // c.addi4spn
+            if (rd_rs1 != 5'b00000) begin
+              is_c_inst = 1'b1;
+              i_inst = {2'b00, c_inst[10:7], c_inst[12:11], c_inst[5], c_inst[6], 2'b00, 5'b00010, 3'b000, rd_rs1, 7'b0010011};
+            end
+          end
+          3'b010: begin // c.lw
+            is_c_inst = 1'b1;
+            i_inst = {5'b00000, c_inst[5], c_inst[12:10], c_inst[6], 2'b00, rd_rs1, 3'b010, rs2, 7'b0000011};
+          end
+          3'b110: begin // c.sw
+            is_c_inst = 1'b1;
+            i_inst = {5'b00000, c_inst[5], c_inst[12], rs2, 2'b00, c_inst[11:10], c_inst[6], 7'b0100011};
+          end
+        endcase
+      end
+
+      2'b01: begin
+        case (funct3)
+          3'b000: begin // c.addi
+            if (rd_rs1 != 5'b00000) begin
+              is_c_inst = 1'b1;
+              i_inst = {{6{c_inst[12]}}, c_inst[12], c_inst[6:2], rd_rs1, 3'b000, rd_rs1, 7'b0010011};
+            end
+          end
+          3'b001: begin // c.jal
+            is_c_inst = 1'b1;
+            i_inst = {c_inst[12], c_inst[8], c_inst[10:9], c_inst[6], c_inst[7], c_inst[2], c_inst[11], c_inst[5:3], {8{c_inst[12]}}, 5'b00001, 7'b1101111};
+          end
+          3'b010: begin // c.li
+            if (rd_rs1 != 5'b00000) begin
+              is_c_inst = 1'b1;
+              i_inst = {{6{c_inst[12]}}, c_inst[12], c_inst[6:2], 5'b00000, 3'b000, rd_rs1, 7'b0010011};
+            end
+          end
+          3'b011: begin
+            if (rd_rs1 == 5'b00010) begin // c.addi16sp
+              is_c_inst = 1'b1;
+              i_inst = {c_inst[12], c_inst[4], c_inst[3], c_inst[5], c_inst[2], c_inst[6], {6{c_inst[12]}}, 5'b00010, 3'b000, 5'b00010, 7'b0010011};
+            end else if (rd_rs1 != 5'b00000) begin // c.lui
+              is_c_inst = 1'b1;
+              i_inst = {{14{c_inst[12]}}, c_inst[12], c_inst[6:2], rd_rs1, 7'b0110111};
+            end
+          end
+          3'b100: begin
+            if (c_inst[11:10] == 2'b00) begin // c.srli
+              is_c_inst = 1'b1;
+              i_inst = {7'b0000000, c_inst[6:2], rd_rs1, 3'b101, rd_rs1, 7'b0010011};
+            end else if (c_inst[11:10] == 2'b01) begin // c.srai
+              is_c_inst = 1'b1;
+              i_inst = {7'b0100000, c_inst[6:2], rd_rs1, 3'b101, rd_rs1, 7'b0010011};
+            end else if (c_inst[11:10] == 2'b10) begin // c.andi
+              is_c_inst = 1'b1;
+              i_inst = {{6{c_inst[12]}}, c_inst[12], c_inst[6:2], rd_rs1, 3'b111, rd_rs1, 7'b0010011};
+            end
+          end
+          3'b110: begin // c.beqz
+            is_c_inst = 1'b1;
+            i_inst = {{5{c_inst[12]}}, c_inst[6:5], c_inst[2], 5'b00000, c_inst[11:10], c_inst[4:3], c_inst[12], 7'b1100011};
+          end
+          3'b111: begin // c.bnez
+            is_c_inst = 1'b1;
+            i_inst = {{5{c_inst[12]}}, c_inst[6:5], c_inst[2], 5'b00000, c_inst[11:10], c_inst[4:3], c_inst[12], 7'b1100011};
+          end
+        endcase
+      end
+
+      2'b10: begin
+        case (funct3)
+          3'b000: begin // c.slli
+            if (rd_rs1 != 5'b00000) begin
+              is_c_inst = 1'b1;
+              i_inst = {7'b0000000, c_inst[6:2], rd_rs1, 3'b001, rd_rs1, 7'b0010011};
+            end
+          end
+          3'b100: begin
+            if (c_inst[12]) begin // c.and, c.or, c.xor, c.sub
+              case (c_inst[11:10])
+                2'b00: begin // c.sub
+                  is_c_inst = 1'b1;
+                  i_inst = {7'b0100000, rs2, rd_rs1, 3'b000, rd_rs1, 7'b0110011};
+                end
+                2'b01: begin // c.xor
+                  is_c_inst = 1'b1;
+                  i_inst = {7'b0000000, rs2, rd_rs1, 3'b100, rd_rs1, 7'b0110011};
+                end
+                2'b10: begin // c.or
+                  is_c_inst = 1'b1;
+                  i_inst = {7'b0000000, rs2, rd_rs1, 3'b110, rd_rs1, 7'b0110011};
+                end
+                2'b11: begin // c.and
+                  is_c_inst = 1'b1;
+                  i_inst = {7'b0000000, rs2, rd_rs1, 3'b111, rd_rs1, 7'b0110011};
+                end
+              endcase
+            end else begin // c.mv
+              if (rs2 != 5'b00000) begin
+                is_c_inst = 1'b1;
+                i_inst = {7'b0000000, rs2, 5'b00000, 3'b000, rd_rs1, 7'b0110011};
+              end
+            end
+          end
+        endcase
+      end
+    endcase
+  end
+```
