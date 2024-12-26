@@ -1,5 +1,5 @@
 module icache#(
-  parameter CACHE_WIDTH = 5,
+  parameter CACHE_WIDTH = 7,
   parameter CACHE_SIZE = 1 << CACHE_WIDTH
 )(
   input wire clk,
