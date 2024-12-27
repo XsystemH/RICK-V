@@ -86,6 +86,8 @@ module ifetch(
         update <= 1;
         update_pc <= branch_pc_from_rob;
         update_result <= branch_result;
+      end else begin
+        update <= 0;
       end
 
       if (branch_finish && prejudge != branch_result) begin
