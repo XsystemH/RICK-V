@@ -1,5 +1,5 @@
 module predictor #(
-  parameter PREDICTOR_WIDTH = 5,
+  parameter PREDICTOR_WIDTH = 2,
   parameter PREDICTOR_SIZE = 1 << PREDICTOR_WIDTH
 ) (
   input wire clk,
@@ -7,9 +7,8 @@ module predictor #(
   input wire rdy,
 
   // with ifetch
-  input wire query,
   input wire [31:0] query_pc,
-  output reg predict_result,
+  output wire predict_result,
 
   input wire update,
   input wire [31:0] update_pc,
@@ -19,6 +18,8 @@ module predictor #(
   reg [1:0] predictors[PREDICTOR_SIZE-1:0];
   integer i;
 
+  assign predict_result = predictors[query_pc[PREDICTOR_WIDTH:1]] >= 2'b10;
+
   always @(posedge clk) begin
     if (rst) begin
       for (i = 0; i < PREDICTOR_SIZE; i = i + 1) begin
@@ -27,9 +28,6 @@ module predictor #(
     end else if (!rdy) begin
       // pause
     end else begin
-      if (query) begin
-        predict_result <= predictors[query_pc[PREDICTOR_WIDTH:1]] >= 2'b10;
-      end
       if (update) begin
         if (update_result) begin // 1: taken
           case (predictors[update_pc[PREDICTOR_WIDTH:1]])

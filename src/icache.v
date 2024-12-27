@@ -1,5 +1,5 @@
 module icache#(
-  parameter CACHE_WIDTH = 7,
+  parameter CACHE_WIDTH = 5,
   parameter CACHE_SIZE = 1 << CACHE_WIDTH
 )(
   input wire clk,
@@ -45,8 +45,8 @@ module icache#(
       state <= 0;
       for (i = 0; i < CACHE_SIZE; i = i + 1) begin
         valid[i] <= 0;
-        cache_block[i] <= 0;
         cache_block_addr[i] <= 0;
+        cache_block[i] <= 0;
       end
     end else if (!rdy) begin
       // pause

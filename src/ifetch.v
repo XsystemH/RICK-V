@@ -22,8 +22,7 @@ module ifetch(
   input wire [31:0] next_pc,
 
   // to predictor
-  output reg query,
-  output reg [31:0] pc_to_predictor,
+  output wire [31:0] pc_to_predictor,
   output reg update,
   output reg [31:0] update_pc,
   output reg update_result,
@@ -63,6 +62,8 @@ module ifetch(
                                   (c_to_i == 3) ? CodeJalr : 0 :
                       inst_from_icache[6:0];
 
+  assign pc_to_predictor = pc;
+  
   always @(posedge clk_in) begin
     if (rst_in) begin
       to_decoder <= 0;
@@ -73,7 +74,6 @@ module ifetch(
       pc_to_icache <= 0;
       inst <= 0;
       predict_result <= 0;
-      pc_to_predictor <= 0;
     end else if (!rdy_in) begin
       // pause
     end else begin
@@ -82,7 +82,6 @@ module ifetch(
       end
       if (branch_finish) begin
         // predictor update
-        query <= 0;
         update <= 1;
         update_pc <= branch_pc_from_rob;
         update_result <= branch_result;
@@ -120,7 +119,6 @@ module ifetch(
               to_decoder <= 1;
               inst <= inst_from_icache;
               pc_to_decoder <= pc;
-              query <= 0;
               state <= 0;
             end
             CodeJalr: begin
@@ -128,24 +126,21 @@ module ifetch(
               to_decoder <= 1;
               inst <= inst_from_icache;
               pc_to_decoder <= pc;
-              query <= 0;
               state <= 3;
             end
             CodeBr: begin
               // $display("pc: %h inst: %h, branch", pc, inst_from_icache);
-              to_decoder <= 0;
-              inst <= 0; // empty
-              inst_temp <= inst_from_icache;
-              pc_to_predictor <= pc;
-              query <= 1;
-              state <= 2;
+              to_decoder <= 1;
+              inst <= inst_from_icache;
+              pc_to_decoder <= pc;
+              predict_result <= predict;
+              state <= 0;
             end
             default: begin
               // $display("pc: %h inst: %h, default", pc, inst_from_icache);
               to_decoder <= 1;
               inst <= inst_from_icache;
               pc_to_decoder <= pc;
-              query <= 0;
               state <= 0;
             end
           endcase
@@ -156,13 +151,6 @@ module ifetch(
           to_icache <= 0;
         end
 
-      end else if (state == 2) begin // waitied a cycle for predictor
-        to_decoder <= 1;
-        inst <= inst_temp;
-        pc_to_decoder <= pc;
-        predict_result <= predict;
-
-        state <= 0;
       end else if (state == 3) begin // waited for rob
         to_decoder <= 0;
         inst <= 0;
