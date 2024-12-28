@@ -84,6 +84,7 @@ module rob(
 
   integer flag = 0;
   integer i = 0;
+  // integer t = 0;
 
   always @(posedge clk_in) begin
     if (rst_in) begin
@@ -172,6 +173,7 @@ module rob(
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
         // $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
+        // t = t + 1;
         // free reg
         // store to memory if needed
       end else begin

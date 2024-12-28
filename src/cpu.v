@@ -389,22 +389,4 @@ lsb u_lsb(
 // - 0x30004 read: read clocks passed since cpu starts (in dword, 4 bytes)
 // - 0x30004 write: indicates program stop (will output '\0' through uart tx)
 
-// integer t = 0;
-always @(posedge clk_in)
-  begin
-    if (rst_in)
-      begin
-      
-      end
-    else if (!rdy_in)
-      begin
-      
-      end
-    else
-      begin
-      // $display("clk=%d", t);
-      // t = t + 1;
-      end
-  end
-
 endmodule
