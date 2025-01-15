@@ -1,10 +1,6 @@
 `include "const.v"
 
 module decoder(
-  input wire clk_in,
-  input wire rst_in, // reset when high
-  input wire rdy_in, // pause when low
-
   // from ifetch
   input wire to_decoder,
   input wire [31:0] pc,

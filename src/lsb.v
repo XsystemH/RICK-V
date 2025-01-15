@@ -16,7 +16,6 @@ module lsb(
   input wire j_in,
   input wire k_in,
   input wire [31:0] imm_in,
-  input wire [31:0] inst_pc_in,
   input wire [`REG_ID_BIT-1:0] dest_in,
 
   // form memctrl
@@ -58,7 +57,6 @@ module lsb(
   reg j [`LSB_WIDTH-1:0];
   reg k [`LSB_WIDTH-1:0];
   reg [31:0] imm [`LSB_WIDTH-1:0];
-  reg [31:0] inst_pc [`LSB_WIDTH-1:0];
   reg [`ROB_WIDTH_BIT-1:0] rob_id [`LSB_WIDTH-1:0];
 
   reg [5:0] last_op;
@@ -71,7 +69,6 @@ module lsb(
   assign lsb_full = full;
 
   integer i;
-  integer flag;
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset 
@@ -98,14 +95,8 @@ module lsb(
         j[tail] <= j_in;
         k[tail] <= k_in;
         imm[tail] <= imm_in;
-        inst_pc[tail] <= inst_pc_in;
         rob_id[tail] <= dest_in;
         tail <= (tail + 1 == `LSB_WIDTH) ? 0 : tail + 1;
-        // $display("LSB--------------------------------");
-        // for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
-        //   $display("lsb[%d]: busy: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", i, busy[i], op[i], vj[i], vk[i], qj[i], qk[i], j[i], k[i], imm[i], inst_pc[i], rob_id[i]);
-        // end
-        // $display("LSB got: head: %d, tail: %d, op: %d, vj: %d, vk: %d, qj: %d, qk: %d, j: %d, k: %d, imm: %d, addr: %h, rob#: %d", head, tail, op_type, vj_in, vk_in, qj_in, qk_in, j_in, k_in, imm_in, inst_pc_in, dest_in);
       end
 
       if (!empty && j[head] && k[head]) begin // boardcast all the time
@@ -136,7 +127,6 @@ module lsb(
         end
       end
       if (go_work && received) begin // head + 1 when memctrl received
-        // $display("lsb: quest received! id: %d, op: %d, addr: %h rob#: %d", head, op[head], address, rob_id[head]);
         go_work <= 0;
         
         last_op <= op[head];
@@ -145,7 +135,6 @@ module lsb(
 
         if (15 <= op[head] && op[head] <= 17) begin
           // store
-          // $display("store to rob: %d", rob_id[head]);
           sb_to_rob <= 1;
           store_id <= rob_id[head];
           value <= value_store;
@@ -156,9 +145,6 @@ module lsb(
       end else begin
         sb_to_rob <= 0;
       end
-      // if (has_result && !waiting) begin
-      //   $display("useless result");
-      // end
       if (has_result && waiting) begin
         // write back
         // lb_to_rob <= 1; (X) maybe old result which no longer needed
@@ -167,7 +153,6 @@ module lsb(
                  last_op == 11 ? {{16{value_load[15]}}, value_load[15:0]} :
                  value_load;
         load_id <= last_dest;
-        // $display("lsb: I got the result! id: %d, op: %d, rob#: %d value %h", head, last_op, last_dest, value_load);
         // renew lsb itself
         for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
           if (busy[i]) begin
@@ -206,7 +191,6 @@ module lsb(
       end
 
       if (rs_to_rob) begin
-        // $display("rob# %d got %d from rs", rs_dest, rs_value);
         for (i = 0; i < `LSB_WIDTH; i = i + 1) begin
           if (busy[i] && qj[i] == rs_dest && j[i] == 0) begin
             j[i] <= 1;
@@ -231,7 +215,6 @@ module lsb(
       end
 
       if (lb_to_rob && task_in) begin
-        // $display("lsb got %d from lb", value);
         if (qj_in == load_id && j_in == 0) begin
             j[tail] <= 1;
             vj[tail] <= value;

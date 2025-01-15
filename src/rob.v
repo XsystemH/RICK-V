@@ -79,9 +79,8 @@ module rob(
 
   assign rob_head = head;
 
-  integer flag = 0;
   integer i = 0;
-  // integer t = 0;
+  integer t = 0;
 
   always @(posedge clk_in) begin
     if (rst_in) begin
@@ -118,7 +117,6 @@ module rob(
       end
 
       if (busy[head] && state[head] == 1) begin // in execute state
-        /* verilator lint_off BLKSEQ */flag = 0;/* verilator lint_off BLKSEQ */
         if (op[head] == 39) begin // exit
           // todo: HALT
           HALT <= 1;
@@ -134,7 +132,6 @@ module rob(
           branch_finish <= 1;
           if (value[head] != {31'b0, guessed[head]}) begin
             pc_next <= addr[head] + (value[head] == 1 ? imm_[head] : (is_c[head] ? 2 : 4));
-            flag = 1;
             pc_branch <= addr[head];
             pre <= guessed[head];
             ans <= value[head] != 0;
@@ -146,7 +143,7 @@ module rob(
         end else begin
           branch_finish <= 0;
         end
-        if (flag == 1) begin
+        if (busy[head] && state[head] == 1 && 4 <= op[head] && op[head] <= 9 && value[head] != {31'b0, guessed[head]}) begin
           // clear all the instructions
           // $display("clear all");
           for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
@@ -169,8 +166,8 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
-        // $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
-        // t = t + 1;
+        $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
+        t = t + 1;
         // free reg
         // store to memory if needed
       end else begin

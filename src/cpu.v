@@ -202,9 +202,6 @@ u_predictor(
 );
 
 decoder u_decoder(
-  .clk_in           	( clk_in            ),
-  .rst_in           	( rst_in            ),
-  .rdy_in           	( rdy_in            ),
   .to_decoder       	( to_decoder        ),
   .pc               	( pc_to_decoder     ),
   .inst             	( inst              ),
@@ -351,7 +348,6 @@ lsb u_lsb(
   .j_in        	( j            ),
   .k_in        	( k            ),
   .imm_in      	( imm          ),
-  .inst_pc_in  	( inst_pc      ),
   .dest_in     	( reorder_id   ),
   .received    	( lsb_received ),
   .has_result  	( lsb_task_out ),

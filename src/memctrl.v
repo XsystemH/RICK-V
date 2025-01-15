@@ -58,7 +58,7 @@ module memctrl(
       wr <= 0;
       address <= 0;
       width <= 0;
-      /* verilator lint_off BLKSEQ */finished = 0;/* verilator lint_off BLKSEQ */
+      finished <= 0;
       last_served <= 0;
 
       mem_dout <= 8'b0;
@@ -88,7 +88,7 @@ module memctrl(
           wr <= l_or_s;
           width <= width_in;
           address <= lsb_address_in;
-          finished = 0;
+          finished <= 0;
           // if (l_or_s && lsb_address_in == 32'h00030000) begin
           //   $display("\n[cout] ascii: %h %h %h %h", value_store[7:0], value_store[15:8], value_store[23:16], value_store[31:24]);
           // end
@@ -100,7 +100,7 @@ module memctrl(
             temp[3] <= value_store[31:24];
           end else begin
             // load
-            finished = -2;
+            finished <= -2;
           end
         end
         if (serve == 2) begin
@@ -111,7 +111,7 @@ module memctrl(
           wr <= 0; // get instruction
           width <= 4;
           address <= icache_address_in;
-          finished = -2;
+          finished <= -2;
         end
       end else begin
         lsb_received <= 0;
@@ -135,7 +135,7 @@ module memctrl(
           end
           lsb_task_out <= 0;
           icache_task_out <= 0;
-          finished = finished + 1;
+          finished <= finished + 1;
         end else begin
           if (!wr) begin
             // load

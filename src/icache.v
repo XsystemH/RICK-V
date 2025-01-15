@@ -31,12 +31,11 @@ module icache#(
   wire [31:0] head_addr = {pc[31:1], 1'b0};
   
   wire is_c;
-  wire [5:0] c_to_i;
 
   c_judger judger(
     .inst ({16'b0, cache_block[block_index]}),
     .is_c (is_c),
-    .c_to_i (c_to_i)
+    .c_to_i()
   );
 
   integer i;
@@ -56,7 +55,6 @@ module icache#(
           if (valid[block_index] && cache_block_addr[block_index] == head_addr &&
               (is_c || (valid[block_index + 1] && cache_block_addr[block_index + 1] == head_addr + 2))) begin
             // hit
-            // $display("\nat pc %h, icache hit", pc);
             if (is_c) begin
               inst <= {16'b0, cache_block[block_index]};
             end else begin
@@ -65,7 +63,6 @@ module icache#(
             have_result <= 1;
           end else begin
             // miss
-            // $display("\nat pc %h, icache miss", pc);
             icache_to_memctrl <= 1;
             address <= (valid[block_index] && cache_block_addr[block_index] == head_addr) ? head_addr + 2 : head_addr;
             state <= 1;
