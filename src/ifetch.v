@@ -43,7 +43,6 @@ module ifetch(
 
   reg [2:0] state; // 0 IDEL 1 WAITING FOR ICACHE 2 WAITING FOR PREDICTOR 3 WAITING FOR ROB 4 SENT WRONG PC
   reg [31:0] pc;
-  reg [31:0] inst_temp;
 
   wire is_c_type;
   wire [5:0] c_to_i;
@@ -67,9 +66,8 @@ module ifetch(
   always @(posedge clk_in) begin
     if (rst_in) begin
       to_decoder <= 0;
-      pc = 0;
+      /* verilator lint_off BLKSEQ */pc = 0;/* verilator lint_off BLKSEQ */
       state <= 0;
-      inst_temp <= 0;
       to_icache <= 0;
       pc_to_icache <= 0;
       inst <= 0;

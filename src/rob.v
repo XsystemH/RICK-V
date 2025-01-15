@@ -7,11 +7,8 @@ module rob(
 
   // from Decoder
   input wire to_rob,
-  input wire [31:0] pc,
   input wire [5:0] op_type,
   input wire [`REG_ID_BIT-1:0] rd,
-  input wire [`REG_ID_BIT-1:0] rs1,
-  input wire [`REG_ID_BIT-1:0] rs2,
   input wire [31:0] imm,
   input wire [31:0] inst_pc,
   input wire predictor_result,
@@ -95,7 +92,7 @@ module rob(
         busy[i] <= 0;
       end
 
-      HALT = 0;
+      HALT <= 0;
     end else if (!rdy_in) begin
       // pause
     end else begin
@@ -121,10 +118,10 @@ module rob(
       end
 
       if (busy[head] && state[head] == 1) begin // in execute state
-        flag = 0;
+        /* verilator lint_off BLKSEQ */flag = 0;/* verilator lint_off BLKSEQ */
         if (op[head] == 39) begin // exit
           // todo: HALT
-          HALT = 1;
+          HALT <= 1;
         end
         if (op[head] == 3) begin // jalr
           // decoder stall false
@@ -183,7 +180,6 @@ module rob(
 
       // listen
       if (rs_to_rob) begin
-        // $display("rob# %d got %d from rs", rs_dest, rs_value);
         state[rs_dest] <= 1; // excute
         value[rs_dest] <= rs_value;
       end

@@ -17,6 +17,8 @@ module cpu(
 	output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
 );
 
+assign dbgreg_dout = 32'h0; // dummy output
+
 // memctrl
 wire [31:0] 	value_load;
 wire        	lsb_received;
@@ -36,7 +38,6 @@ wire [31:0] 	pc_to_icache;
 wire          to_decoder;
 wire [31:0] 	inst;
 wire [31:0] 	pc_to_decoder;
-wire          query;
 wire [31:0] 	pc_to_predictor;
 wire          update;
 wire [31:0] 	update_pc;
@@ -60,8 +61,6 @@ wire [`ROB_WIDTH_BIT-1:0] 	qj;
 wire [`ROB_WIDTH_BIT-1:0] 	qk;
 wire                      	to_rob;
 wire [`REG_ID_BIT-1:0]    	dest;
-wire [31:0]               	rob_pc;
-wire                      	rob_guess;
 wire                      	to_rs;
 wire                      	to_lsb;
 wire [31:0]              	  next_pc;
@@ -123,6 +122,7 @@ memctrl u_memctrl(
   .clk_in            	( clk_in             ),
   .rst_in            	( rst_in             ),
   .rdy_in            	( rdy_in             ),
+  .io_buffer_full    	( io_buffer_full     ),
   .mem_din           	( mem_din            ),
   .mem_dout          	( mem_dout           ),
   .mem_a             	( mem_a              ),
@@ -208,7 +208,7 @@ decoder u_decoder(
   .to_decoder       	( to_decoder        ),
   .pc               	( pc_to_decoder     ),
   .inst             	( inst              ),
-  .predict          	( predictor_result  ),
+  .predict          	( predict_result    ),
   .next_pc          	( next_pc           ),
   .op_type          	( op_type           ),
   .rs1              	( rs1               ),
@@ -235,8 +235,6 @@ decoder u_decoder(
   .rob_rs2_value    	( rob_rs2_value     ),
   .to_rob           	( to_rob            ),
   .dest             	( dest              ),
-  .rob_pc           	( rob_pc            ),
-  .rob_guess        	( rob_guess         ),
   .rs_full          	( rs_full           ),
   .to_rs            	( to_rs             ),
   .lsb_full         	( lsb_full          ),
@@ -252,11 +250,8 @@ rob u_rob(
   .rst_in           	( rst_in            ),
   .rdy_in           	( rdy_in            ),
   .to_rob           	( to_rob            ),
-  .pc               	( inst_pc           ),
   .op_type          	( op_type           ),
   .rd               	( dest              ),
-  .rs1              	( rs1               ),
-  .rs2              	( rs2               ),
   .imm              	( imm               ),
   .inst_pc          	( inst_pc           ),
   .predictor_result 	( predictor_result  ),

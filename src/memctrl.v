@@ -2,6 +2,7 @@ module memctrl(
   input wire clk_in,
   input wire rst_in, // reset
   input wire rdy_in, // ready
+  input wire io_buffer_full, // buffer full
 
   //from mem
   input wire [7:0] mem_din,        // data input bus
@@ -50,7 +51,6 @@ module memctrl(
 
   integer finished;
 
-  wire [31:0] finished_debug = finished;
   always @(posedge clk_in) begin
     if (rst_in) begin
       // reset
@@ -58,7 +58,7 @@ module memctrl(
       wr <= 0;
       address <= 0;
       width <= 0;
-      finished = 0;
+      /* verilator lint_off BLKSEQ */finished = 0;/* verilator lint_off BLKSEQ */
       last_served <= 0;
 
       mem_dout <= 8'b0;
@@ -70,7 +70,7 @@ module memctrl(
       lsb_task_out <= 1'b0;
       icache_received <= 1'b0;
       icache_task_out <= 1'b0;
-    end else if (!rdy_in) begin
+    end else if (!rdy_in || io_buffer_full) begin
       // pause
     end else begin
       if (state == 0) begin

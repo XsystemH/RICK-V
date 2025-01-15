@@ -44,8 +44,6 @@ module decoder(
   // to ROB
   output wire to_rob,
   output wire [`REG_ID_BIT-1:0] dest,
-  output wire [31:0] rob_pc,
-  output wire rob_guess,
   output wire is_c,
 
   // from RS
