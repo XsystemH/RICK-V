@@ -61,12 +61,13 @@ module ifetch(
                                   (c_to_i == 3) ? CodeJalr : 0 :
                       inst_from_icache[6:0];
 
-  assign pc_to_predictor = pc;
+  assign pc_to_predictor = (received && !to_decoder) ? next_pc : pc;
   
   always @(posedge clk_in) begin
     if (rst_in) begin
       to_decoder <= 0;
-      /* verilator lint_off BLKSEQ */pc = 0;/* verilator lint_off BLKSEQ */
+      pc <= 0;
+      pc_to_decoder <= 0;
       state <= 0;
       to_icache <= 0;
       pc_to_icache <= 0;
@@ -76,7 +77,7 @@ module ifetch(
       // pause
     end else begin
       if (received && state != 4) begin
-        pc = next_pc;
+        pc <= next_pc;
       end
       if (branch_finish) begin
         // predictor update
@@ -90,7 +91,7 @@ module ifetch(
       if (branch_finish && prejudge != branch_result) begin
         // $display("branch mispredicted");
         to_decoder <= 0;
-        pc = next_pc_from_rob;
+        pc <= next_pc_from_rob;
         if (state == 1) begin
           to_icache <= 0;
           if (have_result) begin
@@ -102,43 +103,38 @@ module ifetch(
         else begin
           state <= 0;
         end
-      end else if (state == 0) begin
-        // $display("query: %h", pc);
+      end else if (state == 0) begin // querry icache
         to_decoder <= 0;
         to_icache <= 1;
-        pc_to_icache <= pc;
+        pc_to_icache <= received ? next_pc : pc;
         inst <= 0;
         state <= 1;
       end else if (state == 1) begin // waiting for icache
         if (have_result) begin
           case (opcode)
             CodeJal: begin
-              // $display("pc: %h inst: %h, jal", pc, inst_from_icache);
               to_decoder <= 1;
               inst <= inst_from_icache;
-              pc_to_decoder <= pc;
+              pc_to_decoder <= received ? next_pc : pc;
               state <= 0;
             end
             CodeJalr: begin
-              // $display("pc: %h inst: %h, jalr", pc, inst_from_icache);
               to_decoder <= 1;
               inst <= inst_from_icache;
-              pc_to_decoder <= pc;
+              pc_to_decoder <= received ? next_pc : pc;
               state <= 3;
             end
             CodeBr: begin
-              // $display("pc: %h inst: %h, branch", pc, inst_from_icache);
               to_decoder <= 1;
               inst <= inst_from_icache;
-              pc_to_decoder <= pc;
+              pc_to_decoder <= received ? next_pc : pc;
               predict_result <= predict;
               state <= 0;
             end
             default: begin
-              // $display("pc: %h inst: %h, default", pc, inst_from_icache);
               to_decoder <= 1;
               inst <= inst_from_icache;
-              pc_to_decoder <= pc;
+              pc_to_decoder <= received ? next_pc : pc;
               state <= 0;
             end
           endcase
@@ -153,12 +149,11 @@ module ifetch(
         to_decoder <= 0;
         inst <= 0;
         if (jalr_finish) begin
-          pc = next_pc_from_rob;
+          pc <= next_pc_from_rob;
           state <= 0;
         end
       end else if (state == 4) begin // sent wrong pc
         if (have_result) begin // got a wrong inst
-          // $display("misunderstood fixed");
           to_decoder <= 0;
           state <= 0;
         end
