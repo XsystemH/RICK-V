@@ -60,6 +60,8 @@ module rob(
   output reg [`ROB_WIDTH_BIT-1:0] rob_id,
   output reg [31:0] value_out,
 
+  output reg [14:0] debug_rob_pc,
+  
   output reg HALT
 );
 // buffer
@@ -92,7 +94,6 @@ module rob(
   assign rob_head = head;
 
   integer i = 0;
-  // integer t = 0;
 
   always @(posedge clk_in) begin
     if (rst_in) begin
@@ -102,6 +103,7 @@ module rob(
       for (i = 0; i < `ROB_WIDTH; i = i + 1) begin
         busy[i] <= 0;
       end
+      debug_rob_pc <= 0;
 
       HALT <= 0;
     end else if (!rdy_in) begin
@@ -178,8 +180,7 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
-        // $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
-        // t <= t + 1;
+        debug_rob_pc <= addr[head][14:0];
         // free reg
         // store to memory if needed
       end else begin

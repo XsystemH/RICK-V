@@ -14,6 +14,7 @@ module cpu(
 	
 	input  wire                 io_buffer_full, // 1 if uart buffer is full
 	
+	output wire [14:0]          debug_info,
 	output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
 );
 
@@ -312,7 +313,9 @@ rob u_rob(
   .reg_id           	( reg_id            ),
   .rob_id           	( rob_id            ),
   .value_out        	( value_out         ),
-  .HALT             	( HALT              )
+  .HALT             	( HALT              ),
+  
+  .debug_rob_pc         ( debug_info        )
 );
 
 regfile u_regfile(
