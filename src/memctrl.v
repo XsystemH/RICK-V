@@ -70,7 +70,7 @@ module memctrl(
       lsb_task_out <= 1'b0;
       icache_received <= 1'b0;
       icache_task_out <= 1'b0;
-    end else if (!rdy_in || io_buffer_full) begin
+    end else if (!rdy_in) begin
       // pause
     end else begin
       if (state == 0) begin
@@ -120,11 +120,16 @@ module memctrl(
 
       if (state == 1) begin
         if ($signed(finished) < $signed({{29{1'b0}}, width})) begin
-          if (wr) begin
+          if (wr && !(io_buffer_full && address >= 32'h00030000)) begin
             // store
             mem_wr <= 1;
             mem_a <= address + finished;
             mem_dout <= temp[finished];
+            finished <= finished + 1;
+          end else if (wr && io_buffer_full && address >= 32'h00030000) begin
+            // io_buffer_full when store
+            mem_wr <= 0;
+            mem_a <= 32'h0;
           end else begin
             // load
             mem_wr <= 0;
@@ -132,11 +137,11 @@ module memctrl(
             if (finished >= 0) begin
               temp[finished] <= mem_din;
             end
+            finished <= finished + 1;
           end
           lsb_task_out <= 0;
           icache_task_out <= 0;
-          finished <= finished + 1;
-        end else begin
+        end else begin // finish
           if (!wr) begin
             // load
             if (last_served == 2) begin
@@ -161,10 +166,16 @@ module memctrl(
             value_load <= 0;
           end
           state <= 0;
+
+          mem_wr <= 0;
+          mem_a <= 32'h0;
         end
       end else begin
         lsb_task_out <= 0;
         icache_task_out <= 0;
+
+        mem_wr <= 0;
+        mem_a <= 32'h0;
       end
 
       if (HALT) begin

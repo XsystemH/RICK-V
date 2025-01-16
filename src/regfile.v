@@ -25,7 +25,16 @@ module regfile(
   output wire [31:0] rs1_value,
   output wire [31:0] rs2_value,
   output wire [`ROB_WIDTH_BIT-1:0] rs1_re,
-  output wire [`ROB_WIDTH_BIT-1:0] rs2_re
+  output wire [`ROB_WIDTH_BIT-1:0] rs2_re,
+
+  input wire [`REG_ID_BIT-1:0] c_rs1,
+  input wire [`REG_ID_BIT-1:0] c_rs2,
+  output wire c_rs1_busy,
+  output wire c_rs2_busy,
+  output wire [31:0] c_rs1_value,
+  output wire [31:0] c_rs2_value,
+  output wire [`ROB_WIDTH_BIT-1:0] c_rs1_re,
+  output wire [`ROB_WIDTH_BIT-1:0] c_rs2_re
 );
 
   reg busy [`REG_ID_WIDTH-1:0];
@@ -39,6 +48,13 @@ module regfile(
   assign rs2_value = busy[rs2] ? 0 : regs[rs2];
   assign rs1_re = busy[rs1] ? rob[rs1] : 0;
   assign rs2_re = busy[rs2] ? rob[rs2] : 0;
+
+  assign c_rs1_busy = busy[c_rs1];
+  assign c_rs2_busy = busy[c_rs2];
+  assign c_rs1_value = busy[c_rs1] ? 0 : regs[c_rs1];
+  assign c_rs2_value = busy[c_rs2] ? 0 : regs[c_rs2];
+  assign c_rs1_re = busy[c_rs1] ? rob[c_rs1] : 0;
+  assign c_rs2_re = busy[c_rs2] ? rob[c_rs2] : 0;
 
   integer i;
   always @(posedge clk_in) begin

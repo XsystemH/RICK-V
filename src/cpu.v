@@ -49,8 +49,10 @@ wire        	predictor_result;
 
 // decoder
 wire [5:0]                	op_type;
-wire [`REG_ID_BIT-1:0]    	rs1;
-wire [`REG_ID_BIT-1:0]    	rs2;
+wire [`REG_ID_BIT-1:0]    	rs1_i;
+wire [`REG_ID_BIT-1:0]    	rs2_i;
+wire [`REG_ID_BIT-1:0]    	rs1_c;
+wire [`REG_ID_BIT-1:0]    	rs2_c;
 wire [31:0]               	imm;
 wire [31:0]               	inst_pc;
 wire                      	j;
@@ -76,6 +78,10 @@ wire                      	rob_rs1_is_ready;
 wire                      	rob_rs2_is_ready;
 wire [31:0]               	rob_rs1_value;
 wire [31:0]               	rob_rs2_value;
+wire                      	c_rob_rs1_is_ready;
+wire                      	c_rob_rs2_is_ready;
+wire [31:0]               	c_rob_rs1_value;
+wire [31:0]               	c_rob_rs2_value;
 wire                      	jalr_finish;
 wire                      	branch_finish;
 wire [31:0]               	pc_next;
@@ -97,6 +103,12 @@ wire [31:0]               	rs1_value;
 wire [31:0]               	rs2_value;
 wire [`ROB_WIDTH_BIT-1:0] 	rs1_re;
 wire [`ROB_WIDTH_BIT-1:0] 	rs2_re;
+wire                      	c_rs1_busy;
+wire                      	c_rs2_busy;
+wire [31:0]               	c_rs1_value;
+wire [31:0]               	c_rs2_value;
+wire [`ROB_WIDTH_BIT-1:0] 	c_rs1_re;
+wire [`ROB_WIDTH_BIT-1:0] 	c_rs2_re;
 
 // rs
 wire                      	rs_full;
@@ -208,8 +220,10 @@ decoder u_decoder(
   .predict          	( predict_result    ),
   .next_pc          	( next_pc           ),
   .op_type          	( op_type           ),
-  .rs1              	( rs1               ),
-  .rs2              	( rs2               ),
+  .rs1_i              (rs1_i              ),
+  .rs2_i              (rs2_i              ),
+  .rs1_c              (rs1_c              ),
+  .rs2_c              (rs2_c              ),
   .imm              	( imm               ),
   .inst_pc          	( inst_pc           ),
   .j                	( j                 ),
@@ -230,6 +244,16 @@ decoder u_decoder(
   .rob_rs2_is_ready 	( rob_rs2_is_ready  ),
   .rob_rs1_value    	( rob_rs1_value     ),
   .rob_rs2_value    	( rob_rs2_value     ),
+  .c_rs1_busy         	( c_rs1_busy          ),
+  .c_rs2_busy         	( c_rs2_busy          ),
+  .c_rs1_value        	( c_rs1_value         ),
+  .c_rs2_value        	( c_rs2_value         ),
+  .c_rs1_re           	( c_rs1_re            ),
+  .c_rs2_re           	( c_rs2_re            ),
+  .c_rob_rs1_is_ready 	( c_rob_rs1_is_ready  ),
+  .c_rob_rs2_is_ready 	( c_rob_rs2_is_ready  ),
+  .c_rob_rs1_value    	( c_rob_rs1_value     ),
+  .c_rob_rs2_value    	( c_rob_rs2_value     ),
   .to_rob           	( to_rob            ),
   .dest             	( dest              ),
   .rs_full          	( rs_full           ),
@@ -261,6 +285,12 @@ rob u_rob(
   .rob_rs2_is_ready 	( rob_rs2_is_ready  ),
   .rob_rs1_value    	( rob_rs1_value     ),
   .rob_rs2_value    	( rob_rs2_value     ),
+  .c_reoder_1         	( c_rs1_re            ),
+  .c_reoder_2         	( c_rs2_re            ),
+  .c_rob_rs1_is_ready 	( c_rob_rs1_is_ready  ),
+  .c_rob_rs2_is_ready 	( c_rob_rs2_is_ready  ),
+  .c_rob_rs1_value    	( c_rob_rs1_value     ),
+  .c_rob_rs2_value    	( c_rob_rs2_value     ),
   .jalr_finish      	( jalr_finish       ),
   .branch_finish    	( branch_finish     ),
   .pc_next          	( pc_next           ),
@@ -297,14 +327,22 @@ regfile u_regfile(
   .rob_id    	( rob_id     ),
   .value     	( value_out  ),
   .clear_all 	( clear_all  ),
-  .rs1       	( rs1        ),
-  .rs2       	( rs2        ),
+  .rs1       	( rs1_i      ),
+  .rs2       	( rs2_i      ),
   .rs1_busy  	( rs1_busy   ),
   .rs2_busy  	( rs2_busy   ),
   .rs1_value 	( rs1_value  ),
   .rs2_value 	( rs2_value  ),
   .rs1_re    	( rs1_re     ),
-  .rs2_re    	( rs2_re     )
+  .rs2_re    	( rs2_re     ),
+  .c_rs1       	( rs1_c      ),
+  .c_rs2       	( rs2_c      ),
+  .c_rs1_busy  	( c_rs1_busy   ),
+  .c_rs2_busy  	( c_rs2_busy   ),
+  .c_rs1_value 	( c_rs1_value  ),
+  .c_rs2_value 	( c_rs2_value  ),
+  .c_rs1_re    	( c_rs1_re     ),
+  .c_rs2_re    	( c_rs2_re     )
 );
 
 rs u_rs(

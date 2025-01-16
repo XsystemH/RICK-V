@@ -102,7 +102,7 @@ module lsb(
       if (!empty && j[head] && k[head]) begin // boardcast all the time
         if (10 <= op[head] && op[head] <= 14) begin
           // load
-          go_work <= (vj[head] + imm[head] != 32'h00030000 || rob_head == rob_id[head]) ? 1 : 0;
+          go_work <= (vj[head] + imm[head] < 32'h00030000 || rob_head == rob_id[head]) ? 1 : 0;
           l_or_s <= 0;
           address <= vj[head] + imm[head];
           width <= op[head] == 10 ? 1 :
@@ -110,7 +110,7 @@ module lsb(
                    op[head] == 12 ? 4 :
                    op[head] == 13 ? 1 :
                    op[head] == 14 ? 2 : 0; // no sign ext
-          waiting <= (vj[head] + imm[head] != 32'h00030000 || rob_head == rob_id[head]) ? 1 : 0;
+          waiting <= (vj[head] + imm[head] < 32'h00030000 || rob_head == rob_id[head]) ? 1 : 0;
         end else if (15 <= op[head] && op[head] <= 17) begin
           // store should be done when at the top of ROB
           go_work <= rob_head == rob_id[head] ? 1 : 0;

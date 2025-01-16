@@ -40,31 +40,34 @@ module c_judger(
                                             (c_func3 == 3'b010) ? (c_rd_rs1 != 0 ? 23 : 39) :
                                             (c_func3 == 3'b110) ? 24 : 39 :
                       39;
-  assign c_to_i = c_type == 0 ? 18 :
-                      c_type == 1 ? 2 :
-                      c_type == 2 ? 0 :
-                      c_type == 3 ? 18 :
-                      c_type == 4 ? 0 :
-                      c_type == 5 ? 25 :
-                      c_type == 6 ? 26 :
-                      c_type == 7 ? 23 :
-                      c_type == 8 ? 28 :
-                      c_type == 9 ? 32 :
-                      c_type == 10 ? 35 :
-                      c_type == 11 ? 36 :
-                      c_type == 12 ? 2 :
-                      c_type == 13 ? 4 :
-                      c_type == 14 ? 5 :
-                      c_type == 15 ? 18 :
-                      c_type == 16 ? 12 :
-                      c_type == 17 ? 17 :
-                      c_type == 18 ? 24 :
-                      c_type == 19 ? 3 :
-                      c_type == 20 ? 27 :
-                      c_type == 21 ? 3 :
-                      c_type == 22 ? 27 :
-                      c_type == 23 ? 12 :
-                      c_type == 24 ? 17 :
-                      39;
+  reg [5:0] lookup_table [0:24]; // 25: 0-24
+  initial begin
+    lookup_table[0] = 18;
+    lookup_table[1] = 2;
+    lookup_table[2] = 0;
+    lookup_table[3] = 18;
+    lookup_table[4] = 0;
+    lookup_table[5] = 25;
+    lookup_table[6] = 26;
+    lookup_table[7] = 23;
+    lookup_table[8] = 28;
+    lookup_table[9] = 32;
+    lookup_table[10] = 35;
+    lookup_table[11] = 36;
+    lookup_table[12] = 2;
+    lookup_table[13] = 4;
+    lookup_table[14] = 5;
+    lookup_table[15] = 18;
+    lookup_table[16] = 12;
+    lookup_table[17] = 17;
+    lookup_table[18] = 24;
+    lookup_table[19] = 3;
+    lookup_table[20] = 27;
+    lookup_table[21] = 3;
+    lookup_table[22] = 27;
+    lookup_table[23] = 12;
+    lookup_table[24] = 17;
+  end
+  assign c_to_i = (c_type <= 24) ? lookup_table[c_type[4:0]] : 39;
   assign is_c = c_type != 39;
 endmodule //c_judger

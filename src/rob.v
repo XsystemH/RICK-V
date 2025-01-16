@@ -25,6 +25,13 @@ module rob(
   output wire [31:0] rob_rs1_value,
   output wire [31:0] rob_rs2_value,
 
+  input wire [`REG_ID_BIT-1:0] c_reoder_1,
+  input wire [`REG_ID_BIT-1:0] c_reoder_2,
+  output wire c_rob_rs1_is_ready,
+  output wire c_rob_rs2_is_ready,
+  output wire [31:0] c_rob_rs1_value,
+  output wire [31:0] c_rob_rs2_value,
+
   // to ifetch
   output reg jalr_finish,
   output reg branch_finish,
@@ -77,9 +84,15 @@ module rob(
   assign rob_rs1_value = state[reoder_1] != 0 ? value[reoder_1] : 0;
   assign rob_rs2_value = state[reoder_2] != 0 ? value[reoder_2] : 0;
 
+  assign c_rob_rs1_is_ready = state[c_reoder_1] != 0 ? 1 : 0;
+  assign c_rob_rs2_is_ready = state[c_reoder_2] != 0 ? 1 : 0;
+  assign c_rob_rs1_value = state[c_reoder_1] != 0 ? value[c_reoder_1] : 0;
+  assign c_rob_rs2_value = state[c_reoder_2] != 0 ? value[c_reoder_2] : 0;
+
   assign rob_head = head;
 
   integer i = 0;
+  // integer t = 0;
 
   always @(posedge clk_in) begin
     if (rst_in) begin
@@ -165,6 +178,8 @@ module rob(
           busy[head] <= 0;
           head <= head + 1 == `ROB_WIDTH ? 0 : head + 1;
         end
+        // $display("[commit %h] rob#: %d addr: %h, value: %h", t, head, addr[head], value[head]);
+        // t <= t + 1;
         // free reg
         // store to memory if needed
       end else begin

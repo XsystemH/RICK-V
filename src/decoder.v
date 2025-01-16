@@ -10,8 +10,10 @@ module decoder(
   output wire [31:0] next_pc,
   
   output wire [5:0] op_type,
-  output wire [`REG_ID_BIT-1:0] rs1,
-  output wire [`REG_ID_BIT-1:0] rs2,
+  output wire [`REG_ID_BIT-1:0] rs1_i,
+  output wire [`REG_ID_BIT-1:0] rs2_i,
+  output wire [`REG_ID_BIT-1:0] rs1_c,
+  output wire [`REG_ID_BIT-1:0] rs2_c,
   output wire [31:0] imm,
   output wire [31:0] inst_pc,
 
@@ -30,6 +32,13 @@ module decoder(
   input wire [`ROB_WIDTH_BIT-1:0] rs1_re,
   input wire [`ROB_WIDTH_BIT-1:0] rs2_re,
 
+  input wire c_rs1_busy,
+  input wire c_rs2_busy,
+  input wire [31:0] c_rs1_value,
+  input wire [31:0] c_rs2_value,
+  input wire [`ROB_WIDTH_BIT-1:0] c_rs1_re,
+  input wire [`ROB_WIDTH_BIT-1:0] c_rs2_re,
+
   // from ROB
   input wire rob_full,
   input wire [`ROB_WIDTH_BIT-1:0] rob_free_id,
@@ -37,6 +46,11 @@ module decoder(
   input wire rob_rs2_is_ready,
   input wire [31:0] rob_rs1_value,
   input wire [31:0] rob_rs2_value,
+
+  input wire c_rob_rs1_is_ready,
+  input wire c_rob_rs2_is_ready,
+  input wire [31:0] c_rob_rs1_value,
+  input wire [31:0] c_rob_rs2_value,
   // to ROB
   output wire to_rob,
   output wire [`REG_ID_BIT-1:0] dest,
@@ -109,7 +123,7 @@ module decoder(
                       (c_type == 5 || c_type == 6) ? {26'b0, c_inst[12], c_inst[6:2]} : // uimm
                       (c_type == 15) ? {22'b0, c_inst[10:7], c_inst[12:11], c_inst[5], c_inst[6], 2'b0} :
                       (c_type == 16) ? {25'b0, c_inst[5], c_inst[12:10], c_inst[6], 2'b0} :
-                      (c_type == 17) ? {24'b0, c_inst[6:5], c_inst[12:10], 3'b0} :
+                      (c_type == 17) ? {25'b0, c_inst[5], c_inst[12:10], c_inst[6], 2'b0} :
                       (c_type == 18) ? {26'b0, c_inst[12], c_inst[6:2]} :
                       (c_type == 23) ? {24'b0, c_inst[3:2], c_inst[12], c_inst[6:4], 2'b0} :
                       (c_type == 24) ? {24'b0, c_inst[8:7], c_inst[12:9], 2'b0} :
@@ -128,33 +142,46 @@ module decoder(
                                 (c_type == 1) ? 1 : 
                                 (c_type == 3) ? 2 :
                                 0;
-  wire [5:0] c_to_i = c_type == 0 ? 18 :
-                      c_type == 1 ? 2 :
-                      c_type == 2 ? 0 :
-                      c_type == 3 ? 18 :
-                      c_type == 4 ? 0 :
-                      c_type == 5 ? 25 :
-                      c_type == 6 ? 26 :
-                      c_type == 7 ? 23 :
-                      c_type == 8 ? 28 :
-                      c_type == 9 ? 32 :
-                      c_type == 10 ? 35 :
-                      c_type == 11 ? 36 :
-                      c_type == 12 ? 2 :
-                      c_type == 13 ? 4 :
-                      c_type == 14 ? 5 :
-                      c_type == 15 ? 18 :
-                      c_type == 16 ? 12 :
-                      c_type == 17 ? 17 :
-                      c_type == 18 ? 24 :
-                      c_type == 19 ? 3 :
-                      c_type == 20 ? 27 :
-                      c_type == 21 ? 3 :
-                      c_type == 22 ? 27 :
-                      c_type == 23 ? 12 :
-                      c_type == 24 ? 17 :
-                      39;
+  assign rs1_c = c_rs_1;
+  assign rs2_c = c_rs_2;
+  reg [5:0] lookup_table [0:24]; // 25: 0-24
+  initial begin
+    lookup_table[0] = 18;
+    lookup_table[1] = 2;
+    lookup_table[2] = 0;
+    lookup_table[3] = 18;
+    lookup_table[4] = 0;
+    lookup_table[5] = 25;
+    lookup_table[6] = 26;
+    lookup_table[7] = 23;
+    lookup_table[8] = 28;
+    lookup_table[9] = 32;
+    lookup_table[10] = 35;
+    lookup_table[11] = 36;
+    lookup_table[12] = 2;
+    lookup_table[13] = 4;
+    lookup_table[14] = 5;
+    lookup_table[15] = 18;
+    lookup_table[16] = 12;
+    lookup_table[17] = 17;
+    lookup_table[18] = 24;
+    lookup_table[19] = 3;
+    lookup_table[20] = 27;
+    lookup_table[21] = 3;
+    lookup_table[22] = 27;
+    lookup_table[23] = 12;
+    lookup_table[24] = 17;
+  end
+  wire [5:0] c_to_i = (c_type <= 24) ? lookup_table[c_type[4:0]] : 39;
   wire is_c_inst = c_type != 39;
+
+  wire c_j = !c_rs1_busy ? 1 : c_rob_rs1_is_ready;
+  wire [`ROB_WIDTH_BIT-1:0] c_qj = !c_rs1_busy ? 0 : c_rs1_re;
+  wire [31:0] c_vj = !c_rs1_busy ? c_rs1_value : c_rob_rs1_value;
+
+  wire c_k = !c_rs2_busy ? 1 : c_rob_rs2_is_ready;
+  wire [`ROB_WIDTH_BIT-1:0] c_qk = !c_rs2_busy ? 0 : c_rs2_re;
+  wire [31:0] c_vk = !c_rs2_busy ? c_rs2_value : c_rob_rs2_value;
 
   // instr processing
   wire [6:0] opcode = inst[6:0];
@@ -183,8 +210,7 @@ module decoder(
 
   assign inst_pc = pc;
 
-  assign op_type = is_c_inst ? c_to_i :
-                   (opcode == CodeLui) ? 0 :
+  wire [5:0] op_type_i = (opcode == CodeLui) ? 0 :
                    (opcode == CodeAupic) ? 1 :
                    (opcode == CodeJal) ? 2 :
                    (opcode == CodeJalr) ? 3 :
@@ -229,44 +255,53 @@ module decoder(
                                           39) :
                  39;
 
-  assign imm = is_c_inst ? c_imm :
-               (opcode == CodeLui) ? imm_u :
+  assign op_type = is_c_inst ? c_to_i : op_type_i;
+
+  wire [31:0] i_imm = (opcode == CodeLui) ? imm_u :
                (opcode == CodeAupic) ? (imm_u + pc) :
                (opcode == CodeJal) ? imm_j :
                (opcode == CodeJalr) ? imm_i :
                (opcode == CodeBr) ? imm_b :
                (opcode == CodeLoad) ? imm_i :
-               (opcode == CodeArithI) ? (24 <= op_type && op_type <= 26 ? imm_i_ : imm_i) :
+               (opcode == CodeArithI) ? (24 <= op_type_i && op_type_i <= 26 ? imm_i_ : imm_i) :
                (opcode == CodeStore) ? imm_s :
                0;
+  assign imm = is_c_inst ? c_imm : i_imm;
 
   assign to_lsb = to_decoder && (10 <= op_type && op_type <= 17) && !lsb_full && !rob_full;
   assign to_rs  = to_decoder && (op_type < 10 || op_type > 17)   && !rs_full  && !rob_full;
   assign to_rob = to_decoder && !rob_full && (to_lsb || to_rs);
   
-  assign rs1 = is_c_inst ? c_rs_1 :
-               to_lsb ? rs1_raw :
-               to_rs  ? ((3 <= op_type && op_type <= 36) ? rs1_raw : 0) :
+  assign rs1_i = to_lsb ? rs1_raw :
+               to_rs  ? ((3 <= op_type_i && op_type_i <= 36) ? rs1_raw : 0) :
                0;
-  assign rs2 = is_c_inst ? c_rs_2 :
-               to_lsb ? (op_type <= 14 ? 0 : rs2_raw) :
-               to_rs  ? (((4 <= op_type && op_type <= 9) 
-                        || (15 <= op_type && op_type <= 17)
-                        || (27 <= op_type && op_type <= 36)) ? rs2_raw : 0) :
+  assign rs2_i = to_lsb ? (op_type_i <= 14 ? 0 : rs2_raw) :
+               to_rs  ? (((4 <= op_type_i && op_type_i <= 9) 
+                        || (15 <= op_type_i && op_type_i <= 17)
+                        || (27 <= op_type_i && op_type_i <= 36)) ? rs2_raw : 0) :
                0;
 
-  assign j = !rs1_busy ? 1 : rob_rs1_is_ready;
-  assign qj = !rs1_busy ? 0 : rs1_re;
-  assign vj = !rs1_busy ? rs1_value : rob_rs1_value;
+  wire i_j = !rs1_busy ? 1 : rob_rs1_is_ready;
+  wire [`ROB_WIDTH_BIT-1:0] i_qj = !rs1_busy ? 0 : rs1_re;
+  wire [31:0] i_vj = !rs1_busy ? rs1_value : rob_rs1_value;
 
-  assign k = !rs2_busy ? 1 : rob_rs2_is_ready;
-  assign qk = !rs2_busy ? 0 : rs2_re;
-  assign vk = !rs2_busy ? rs2_value : rob_rs2_value;
+  wire i_k = !rs2_busy ? 1 : rob_rs2_is_ready;
+  wire [`ROB_WIDTH_BIT-1:0] i_qk = !rs2_busy ? 0 : rs2_re;
+  wire [31:0] i_vk = !rs2_busy ? rs2_value : rob_rs2_value;
   
-  assign dest = is_c_inst ? c_rd :
-                (4 <= op_type && op_type <= 9) 
-                    || (15 <= op_type && op_type <= 17) 
-                    || op_type > 36 ? 0 : rd_raw;
+  assign j = is_c_inst ? c_j : i_j;
+  assign qj = is_c_inst ? c_qj : i_qj;
+  assign vj = is_c_inst ? c_vj : i_vj;
+
+  assign k = is_c_inst ? c_k : i_k;
+  assign qk = is_c_inst ? c_qk : i_qk;
+  assign vk = is_c_inst ? c_vk : i_vk;
+  
+  wire [`REG_ID_BIT-1:0] dest_i = (4 <= op_type_i && op_type_i <= 9) 
+                    || (15 <= op_type_i && op_type_i <= 17) 
+                    || op_type_i > 36 ? 0 : rd_raw;
+
+  assign dest = is_c_inst ? c_rd : dest_i;
 
   assign next_pc = to_rob ? (op_type == 2  ? jal_pc : 
                              op_type == 3 ? pc : 
